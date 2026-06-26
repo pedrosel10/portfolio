@@ -73,6 +73,10 @@ export function initMouse(scene, camera, screensGroup) {
     const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
     if (dist > 5) return; // Ignore if it was a drag
 
+    // Update mouse coordinates for mobile taps
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(screensGroup.children, true);
     const screenHit = intersects.find(hit => hit.object.userData.isScreen);
