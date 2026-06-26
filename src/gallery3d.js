@@ -267,8 +267,8 @@ window.addEventListener('pointermove', (e) => {
     offsetY += dy; // Screen Y is inverted to 3D Y, but updateGridPositions handles it
     updateGridPositions();
   } else {
-    // Scroll detail
-    projectScrollY += dy;
+    // Scroll detail (invertido para ser scroll natural no touch)
+    projectScrollY -= dy;
     const maxScroll = projectImages.length * spacing;
     projectScrollY = Math.max(0, Math.min(projectScrollY, maxScroll));
     detailGroup.position.y = projectScrollY;
@@ -312,6 +312,11 @@ window.addEventListener('wheel', (e) => {
 window.addEventListener('pointerup', (e) => {
   if (window.activeScene !== 'gallery') return;
   isPointerDown = false;
+  
+  // Update mouse coordinates on pointerup so that simple taps on mobile
+  // calculate the correct intersection, instead of using old coordinates.
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
   
   if (!isDraggingGallery && !isProjectOpen) {
     raycaster.setFromCamera(mouse, galleryCamera);
