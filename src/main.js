@@ -529,10 +529,26 @@ window.addEventListener('exitGalleryScene', (e) => {
     duration: 1,
     onComplete: () => {
       window.activeScene = 'main';
+      
+      const aspect = window.innerWidth / window.innerHeight;
+      let targetZ = cameraSettings.baseZ;
+      if (aspect < 1.0) {
+        targetZ = (cameraSettings.baseZ / aspect) * 1.2;
+      }
+      
       gsap.to(camera.position, {
-        z: cameraSettings.baseZ,
+        z: targetZ,
         duration: 1.5,
-        ease: 'power3.out'
+        ease: 'power3.out',
+        onUpdate: () => {
+          if (scene.fog) {
+            const fogSettingsNear = 8.9;
+            const fogSettingsFar = 17.4;
+            const zDiff = camera.position.z - cameraSettings.baseZ;
+            scene.fog.near = fogSettingsNear + zDiff;
+            scene.fog.far = fogSettingsFar + zDiff;
+          }
+        }
       });
       gsap.to(transitionLayer, { opacity: 0, duration: 1 });
     }
