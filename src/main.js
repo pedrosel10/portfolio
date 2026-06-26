@@ -15,6 +15,16 @@ import gsap from 'gsap';
 
 window.activeScene = 'main';
 
+THREE.DefaultLoadingManager.onLoad = function () {
+  const loadingScreen = document.getElementById('loading-screen');
+  if (loadingScreen) {
+    loadingScreen.style.opacity = '0';
+    setTimeout(() => {
+      loadingScreen.style.display = 'none';
+    }, 800);
+  }
+};
+
 // --- Scene Setup ---
 const appContainer = document.getElementById('app');
 
@@ -175,7 +185,7 @@ document.getElementById('toggle-fold').addEventListener('click', () => {
 
 // --- GUI Setup ---
 const gui = new GUI({ title: 'Configurações do Ambiente' });
-// gui.hide(); // Hide the GUI for now
+gui.hide(); // Hide the GUI for now
 
 const actions = {
   useHDRI: true,
