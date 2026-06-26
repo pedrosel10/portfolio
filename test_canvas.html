@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><body>
+<canvas id="c"></canvas>
+<script>
+  const c = document.getElementById('c');
+  const textCtx = c.getContext('2d');
+  const textWidth = 1500, textHeight = 450;
+  c.width = textWidth; c.height = textHeight;
+  
+  textCtx.fillStyle = '#ffffff';
+  textCtx.fillRect(0, 0, textWidth, textHeight);
+  
+  textCtx.font = "normal 300px 'serif'";
+  textCtx.fillStyle = '#000000';
+  textCtx.textAlign = 'center';
+  textCtx.textBaseline = 'middle';
+  textCtx.fillText("PORTFÓLIO", textWidth / 2, textHeight / 2);
+</script>
+</body></html>

@@ -82,23 +82,17 @@ export function initMouse(scene, camera, screensGroup) {
     const screenHit = intersects.find(hit => hit.object.userData.isScreen);
     
     if (screenHit) {
-      // Find the screen index. The screenHit.object is a Mesh.
-      // Its parent is the panelGroup, which is stored in panelsData.
-      const parentGroup = screenHit.object.parent;
-      let clickedIndex = -1;
+      const clickedIndex = screenHit.object.userData.screenIndex;
       
-      // Attempt to find index from screensGroup children (we know there are 3 panels)
-      const childIndex = screensGroup.children.indexOf(parentGroup);
-      if (childIndex !== -1) {
-        clickedIndex = childIndex;
+      // Somente abre a galeria se for a tela "BRAND" (índice 0)
+      if (clickedIndex === 0) {
+        window.dispatchEvent(new CustomEvent('enterProjectGallery', { 
+          detail: { 
+            index: clickedIndex,
+            point: screenHit.point 
+          } 
+        }));
       }
-
-      window.dispatchEvent(new CustomEvent('enterProjectGallery', { 
-        detail: { 
-          index: clickedIndex,
-          point: screenHit.point 
-        } 
-      }));
     }
   });
 }

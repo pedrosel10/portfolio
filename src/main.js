@@ -23,7 +23,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
 
 export const cameraSettings = { baseZ: 6.1 };
-const fogSettings = { baseNear: 8.9, baseFar: 17.4 };
+const fogSettings = { baseNear: 7.1, baseFar: 13.2 };
 
 // Background is transparent to show the HTML text behind it
 // Fog can help fade the reflection
@@ -68,11 +68,10 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // optimize pixe
 renderer.toneMapping = THREE.NoToneMapping;
 scene.environmentIntensity = 1.2; // Aumentado para dar mais brilho ao HDRI sem acinzentar o chão
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.domElement.style.touchAction = 'none'; // Prevent browser scroll when dragging canvas
-// Use a clean clear color with alpha=0. 
-// We use 0x000000 to prevent WebGL premultiplied alpha from washing out the CSS background text
-renderer.setClearColor(0x000000, 0); 
+// Use opaque background matching config.bgColor to ensure soft canvas edges
+renderer.setClearColor(config.bgColor, 1); 
 appContainer.appendChild(renderer.domElement);
 
 // --- Gallery Postprocessing (Fisheye + Chromatic Aberration) ---
@@ -176,6 +175,7 @@ document.getElementById('toggle-fold').addEventListener('click', () => {
 
 // --- GUI Setup ---
 const gui = new GUI({ title: 'Configurações do Ambiente' });
+// gui.hide(); // Hide the GUI for now
 
 const actions = {
   useHDRI: true,
@@ -217,10 +217,9 @@ gui.add(actions, 'copySettings').name('💾 Copiar Configurações');
 
 // Theme settings
 const themeFolder = gui.addFolder('Cores do Site');
-themeFolder.addColor(config, 'bgColor').name('Fundo do Site').onChange(c => document.body.style.backgroundColor = c);
-themeFolder.addColor(config, 'textColor').name('Cor do Texto').onChange(c => {
-  document.body.style.color = c;
-  update3DText();
+themeFolder.addColor(config, 'bgColor').name('Fundo do Site').onChange(c => {
+  document.body.style.backgroundColor = c;
+  renderer.setClearColor(c, 1);
 });
 
 // Animation & Scroll settings
@@ -228,152 +227,6 @@ const animFolder = gui.addFolder('Animação e Scroll');
 animFolder.add(config, 'foldDuration', 0.5, 5.0, 0.1).name('Vel. de Abertura');
 animFolder.add(config, 'scrollSensitivity', 0.001, 0.01, 0.001).name('Vel. Scroll Cilindro');
 animFolder.add(config, 'flatScrollSensitivity', 0.001, 0.03, 0.001).name('Vel. Scroll Panorama');
-
-// Background Text settings (3D Text via ShaderMaterial with Ripple Effect)
-let textMesh, textCanvas, textCtx, textTexture;
-
-const textUniforms = {
-  tDiffuse: { value: null },
-  uOpacity: { value: config.bgTextOpacity },
-  uMouse: { value: new THREE.Vector2(0.5, 0.5) },
-  uMouseVelocity: { value: new THREE.Vector2(0, 0) },
-  uHover: { value: 0 },
-  uTime: { value: 0 },
-  uWaveStrength: { value: config.textWaveStrength },
-  uWaveRadius: { value: config.textWaveRadius },
-  uVelocitySmudge: { value: config.textVelocitySmudge },
-  uAspect: { value: 1.0 }
-};
-
-const textVertexShader = `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const textFragmentShader = `
-  uniform sampler2D tDiffuse;
-  uniform float uOpacity;
-  uniform vec2 uMouse;
-  uniform vec2 uMouseVelocity;
-  uniform float uHover;
-  uniform float uTime;
-  uniform float uWaveStrength;
-  uniform float uWaveRadius;
-  uniform float uVelocitySmudge;
-  uniform float uAspect;
-  
-  varying vec2 vUv;
-  
-  void main() {
-    vec2 uv = vUv;
-    
-    // Correct UV for aspect ratio so the distortion is perfectly circular
-    vec2 aspectUv = uv;
-    aspectUv.x *= uAspect;
-    vec2 aspectMouse = uMouse;
-    aspectMouse.x *= uAspect;
-    
-    float dist = distance(aspectUv, aspectMouse);
-    float falloff = smoothstep(uWaveRadius, 0.0, dist);
-    
-    vec2 dir = normalize(uv - uMouse);
-    
-    // Add velocity-based smudging/distortion
-    uv -= uMouseVelocity * falloff * uVelocitySmudge * uHover;
-    
-    // Keep a subtle ripple (lower frequency)
-    float wave = sin(dist * 20.0 - uTime * 5.0) * uWaveStrength;
-    uv += dir * wave * falloff * uHover;
-    
-    vec4 texColor = texture2D(tDiffuse, uv);
-    gl_FragColor = vec4(texColor.rgb, texColor.a * uOpacity);
-  }
-`;
-
-const update3DText = () => {
-  if (!textCanvas) {
-    textCanvas = document.createElement('canvas');
-    textCtx = textCanvas.getContext('2d');
-    textTexture = new THREE.CanvasTexture(textCanvas);
-    textTexture.minFilter = THREE.LinearFilter;
-    textTexture.magFilter = THREE.LinearFilter;
-    textUniforms.tDiffuse.value = textTexture;
-    
-    const geo = new THREE.PlaneGeometry(1, 1);
-    const mat = new THREE.ShaderMaterial({
-      uniforms: textUniforms,
-      vertexShader: textVertexShader,
-      fragmentShader: textFragmentShader,
-      transparent: true,
-      depthWrite: false
-    });
-    textMesh = new THREE.Mesh(geo, mat);
-    scene.add(textMesh);
-  }
-
-  const fontSize = 300; // High res for crispness
-  textCtx.font = `900 ${fontSize}px 'Playfair Display', serif`;
-  // letterSpacing needs canvas API support (modern browsers)
-  textCtx.letterSpacing = `${config.bgTextSpacing}em`;
-  
-  const metrics = textCtx.measureText(config.bgTextContent);
-  const textWidth = metrics.width || 100;
-  const textHeight = fontSize * 1.5; 
-  
-  textCanvas.width = textWidth;
-  textCanvas.height = textHeight;
-  
-  textCtx.font = `900 ${fontSize}px 'Playfair Display', serif`;
-  textCtx.letterSpacing = `${config.bgTextSpacing}em`;
-  textCtx.fillStyle = config.textColor;
-  textCtx.textAlign = 'center';
-  textCtx.textBaseline = 'middle';
-  
-  textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
-  textCtx.fillText(config.bgTextContent, textCanvas.width / 2, textCanvas.height / 2);
-  
-  textTexture.needsUpdate = true;
-  
-  const aspect = textCanvas.width / textCanvas.height;
-  const screenAspect = window.innerWidth / window.innerHeight;
-  
-  let physicalWidth = config.bgTextSize; 
-  if (screenAspect < 1.0) {
-    // Shrink text proportionally on mobile to prevent clipping due to perspective depth difference
-    physicalWidth = config.bgTextSize * screenAspect;
-  }
-  
-  textMesh.scale.set(physicalWidth, physicalWidth / aspect, 1);
-  
-  textUniforms.uAspect.value = aspect;
-  textUniforms.uOpacity.value = config.bgTextOpacity;
-  
-  // Mapping % to 3D space coordinates
-  textMesh.position.x = (config.bgTextX - 50) * 0.5; 
-  textMesh.position.y = -(config.bgTextY - 50) * 0.2; 
-  textMesh.position.z = config.bgTextZ;
-};
-
-// Initialize the text immediately
-// Wait slightly for fonts to load, or just render once and re-render later if needed
-document.fonts.ready.then(() => update3DText());
-update3DText();
-
-const textFolder = gui.addFolder('Estilização do Texto (Fundo 3D)');
-textFolder.add(config, 'bgTextContent').name('Texto').onChange(update3DText);
-textFolder.add(config, 'bgTextSize', 5, 50, 0.1).name('Tamanho').onChange(update3DText);
-textFolder.add(config, 'bgTextOpacity', 0, 1, 0.01).name('Opacidade').onChange(update3DText);
-textFolder.add(config, 'bgTextSpacing', -0.1, 0.5, 0.01).name('Espaçamento (em)').onChange(update3DText);
-textFolder.add(config, 'bgTextX', 0, 100, 1).name('Posição X (%)').onChange(update3DText);
-textFolder.add(config, 'bgTextY', 0, 100, 1).name('Posição Y (%)').onChange(update3DText);
-textFolder.add(config, 'bgTextZ', -30, 10, 0.1).name('Profundidade (Z)').onChange(update3DText);
-textFolder.add(config, 'textWaveRadius', 0, 1, 0.01).name('Raio da Onda').onChange(v => textUniforms.uWaveRadius.value = v);
-textFolder.add(config, 'textWaveStrength', 0, 0.05, 0.001).name('Força da Onda').onChange(v => textUniforms.uWaveStrength.value = v);
-textFolder.add(config, 'textVelocitySmudge', 0, 10, 0.1).name('Arrasto do Mouse').onChange(v => textUniforms.uVelocitySmudge.value = v);
-textFolder.add(config, 'textMouseLerp', 0.01, 1.0, 0.01).name('Velocidade do Rastro');
 
 // Face Materials settings
 const applyMaterialParams = () => {
@@ -486,21 +339,13 @@ window.addEventListener('resize', () => {
   renderer.setSize(width, height);
   galleryComposer.setSize(width, height);
   updateCameraZ();
-  update3DText(); // Ensure text scales dynamically on resize
   
   // Re-render immediately on resize
   renderer.render(scene, camera);
 });
 
-// --- Render Loop ---
-const clock = new THREE.Clock();
-const currentMouse = new THREE.Vector2(0.5, 0.5);
-const targetMouse = new THREE.Vector2(0.5, 0.5);
-
-window.addEventListener('mousemove', (e) => {
-  targetMouse.x = (e.clientX / window.innerWidth);
-  targetMouse.y = 1.0 - (e.clientY / window.innerHeight);
-});
+// Start the animation loop
+const timer = new THREE.Timer();
 
 window.addEventListener('enterProjectGallery', (e) => {
   gsap.to(camera.position, {
@@ -542,11 +387,9 @@ window.addEventListener('exitGalleryScene', (e) => {
         ease: 'power3.out',
         onUpdate: () => {
           if (scene.fog) {
-            const fogSettingsNear = 8.9;
-            const fogSettingsFar = 17.4;
             const zDiff = camera.position.z - cameraSettings.baseZ;
-            scene.fog.near = fogSettingsNear + zDiff;
-            scene.fog.far = fogSettingsFar + zDiff;
+            scene.fog.near = fogSettings.baseNear + zDiff;
+            scene.fog.far = fogSettings.baseFar + zDiff;
           }
         }
       });
@@ -558,8 +401,9 @@ window.addEventListener('exitGalleryScene', (e) => {
 function animate() {
   requestAnimationFrame(animate);
 
-  const elapsedTime = clock.getElapsedTime();
-  const delta = clock.getDelta();
+  timer.update();
+  const elapsedTime = timer.getElapsed();
+  const delta = timer.getDelta();
 
   // Update screens
   if (window.activeScene === 'main') {
@@ -572,13 +416,6 @@ function animate() {
       reflector.material.uniforms.waveSpeed.value = config.waveSpeed;
     }
   }
-
-  // update text uniforms
-  textUniforms.uTime.value = elapsedTime * config.textWaveSpeed;
-
-  // ease mouse
-  currentMouse.lerp(targetMouse, config.textMouseLerp);
-  textUniforms.uMouse.value.copy(currentMouse);
 
   if (window.activeScene === 'main') {
     renderer.render(scene, camera);

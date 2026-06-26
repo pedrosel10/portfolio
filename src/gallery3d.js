@@ -164,7 +164,10 @@ closeBtn.onmouseenter = () => closeBtn.style.background = 'rgba(255,255,255,0.3)
 closeBtn.onmouseleave = () => closeBtn.style.background = 'rgba(255,255,255,0.1)';
 document.body.appendChild(closeBtn);
 
-closeBtn.addEventListener('click', () => {
+closeBtn.addEventListener('pointerdown', e => e.stopPropagation());
+closeBtn.addEventListener('pointerup', e => e.stopPropagation());
+closeBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
   if (!isProjectOpen) {
     // Return to main scene
     window.dispatchEvent(new CustomEvent('exitGalleryScene'));

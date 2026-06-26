@@ -1,14 +1,7 @@
 export const config = {
   // Theme
   bgColor: '#ffffff',
-  textColor: '#000000',
-  bgTextContent: 'PORTFÓLIO',
-  bgTextSize: 12, // vw
-  bgTextOpacity: 1,
-  bgTextSpacing: 0, // em
-  bgTextX: 50, // left %
-  bgTextY: 38, // top %
-  bgTextZ: -4, // z-index/depth
+
   
   // Animation
   foldDuration: 1.2,
@@ -52,9 +45,4 @@ export const config = {
   waveStrength: 0.003,
   waveSpeed: 4.8,
   
-  // Text Hover Ripple
-  textWaveRadius: 0.3,
-  textWaveStrength: 0.003,
-  textVelocitySmudge: 0.5,
-  textMouseLerp: 0.08,
 };
