@@ -1,11 +1,19 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { createScreens, screensGroup, toggleFold, updateScreens, panelsDataObj } from './screens.js';
+import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { createScreens, screensGroup, toggleFold, updateScreens, panelsDataObj, frontTextMeshes } from './screens.js';
+import { galleryScene, galleryCamera } from './gallery3d.js';
 import { createFloor } from './floor.js';
 import { initScroll } from './scroll.js';
 import { initMouse } from './mouse.js';
 import GUI from 'lil-gui';
 import { config } from './config.js';
+import gsap from 'gsap';
+
+window.activeScene = 'main';
 
 // --- Scene Setup ---
 const appContainer = document.getElementById('app');
@@ -14,7 +22,7 @@ const scene = new THREE.Scene();
 // --- Camera & Fog Setup ---
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
 
-const cameraSettings = { baseZ: 6.1 };
+export const cameraSettings = { baseZ: 6.1 };
 const fogSettings = { baseNear: 8.9, baseFar: 17.4 };
 
 // Background is transparent to show the HTML text behind it
@@ -57,6 +65,8 @@ scene.add(camera);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // optimize pixel ratio
+renderer.toneMapping = THREE.NoToneMapping;
+scene.environmentIntensity = 1.2; // Aumentado para dar mais brilho ao HDRI sem acinzentar o chão
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.domElement.style.touchAction = 'none'; // Prevent browser scroll when dragging canvas
@@ -65,18 +75,81 @@ renderer.domElement.style.touchAction = 'none'; // Prevent browser scroll when d
 renderer.setClearColor(0x000000, 0); 
 appContainer.appendChild(renderer.domElement);
 
+// --- Gallery Postprocessing (Fisheye + Chromatic Aberration) ---
+const galleryComposer = new EffectComposer(renderer);
+const galleryRenderPass = new RenderPass(galleryScene, galleryCamera);
+galleryComposer.addPass(galleryRenderPass);
+
+const LensDistortionShader = {
+  uniforms: {
+    "tDiffuse": { value: null },
+    "distortion": { value: 0.15 }, // Fisheye strength
+    "rgbShift": { value: 0.01 } // Chromatic aberration strength
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float distortion;
+    uniform float rgbShift;
+    varying vec2 vUv;
+    
+    void main() {
+      vec2 p = vUv - 0.5;
+      float r2 = p.x * p.x + p.y * p.y;
+      
+      // Pre-scale p para que a distorção não ultrapasse as bordas da textura
+      // O raio ao quadrado máximo é 0.5 (nos cantos). 
+      float maxF = 1.0 + 0.5 * distortion;
+      p = p / maxF;
+      
+      float f = 1.0 + r2 * distortion;
+      vec2 uv = p * f + 0.5;
+      
+      vec2 rUv = p * (f + rgbShift * r2) + 0.5;
+      vec2 bUv = p * (f - rgbShift * r2) + 0.5;
+      
+      float r = texture2D(tDiffuse, rUv).r;
+      float g = texture2D(tDiffuse, uv).g;
+      float b = texture2D(tDiffuse, bUv).b;
+      
+      gl_FragColor = vec4(r, g, b, 1.0);
+    }
+  `
+};
+
+const lensPass = new ShaderPass(LensDistortionShader);
+galleryComposer.addPass(lensPass);
+
+const outputPass = new OutputPass();
+galleryComposer.addPass(outputPass);
+
+let hdriEnvMap = null;
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
-scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+pmremGenerator.compileEquirectangularShader();
+
+new EXRLoader().load('./142_hdrmaps_com_free_1K.exr', (texture) => {
+  hdriEnvMap = pmremGenerator.fromEquirectangular(texture).texture;
+  if (actions.useHDRI) {
+    scene.environment = hdriEnvMap;
+  }
+  texture.dispose();
+});
 
 // --- Lighting ---
 // Ambient light
 const ambientColorObj = { color: 0xffffff };
-const ambientLight = new THREE.AmbientLight(ambientColorObj.color, 5);
+const ambientLight = new THREE.AmbientLight(ambientColorObj.color, 10.8); // Intensidade definida no JSON
 scene.add(ambientLight);
 
 // Directional light for subtle shadows and highlights
 const directionalColorObj = { color: 0xffffff };
-const directionalLight = new THREE.DirectionalLight(directionalColorObj.color, 5.9);
+const directionalLight = new THREE.DirectionalLight(directionalColorObj.color, 0); // Intensidade 0 conforme JSON fornecido
 directionalLight.position.set(7.3, 1.2, 4.6);
 directionalLight.castShadow = true;
 directionalLight.shadow.mapSize.width = 512;
@@ -105,6 +178,7 @@ document.getElementById('toggle-fold').addEventListener('click', () => {
 const gui = new GUI({ title: 'Configurações do Ambiente' });
 
 const actions = {
+  useHDRI: true,
   copySettings: () => {
     const settings = {
       config: config, // Includes theme, physics, animation speeds
@@ -328,6 +402,41 @@ facesFolder.add(config, 'roughness', 0, 1, 0.01).name('Rugosidade (Fosco)').onCh
 facesFolder.add(config, 'ior', 1, 3, 0.01).name('Índice de Refração').onChange(applyMaterialParams);
 facesFolder.add(config, 'thickness', 0, 2, 0.01).name('Espessura').onChange(applyMaterialParams);
 
+// Front 3D Text settings
+const applyFrontTextParams = () => {
+  frontTextMeshes.forEach(mesh => {
+    mesh.material.color.set(config.frontTextColor);
+    mesh.material.emissive.set(config.frontTextEmissive);
+    mesh.material.emissiveIntensity = config.frontTextEmissiveIntensity;
+    mesh.material.transmission = config.frontTextTransmission;
+    mesh.material.opacity = config.frontTextOpacity;
+    mesh.material.metalness = config.frontTextMetalness;
+    mesh.material.roughness = config.frontTextRoughness;
+    mesh.material.ior = config.frontTextIor;
+    mesh.material.thickness = config.frontTextThickness;
+  });
+};
+
+const applyFrontTextScale = () => {
+  frontTextMeshes.forEach(mesh => {
+    mesh.scale.set(config.frontTextScaleX, config.frontTextScaleY, config.frontTextScaleZ);
+  });
+};
+
+const frontTextFolder = gui.addFolder('Visual do Texto 3D (Telas)');
+frontTextFolder.add(config, 'frontTextScaleX', 0.1, 3, 0.01).name('Largura').onChange(applyFrontTextScale);
+frontTextFolder.add(config, 'frontTextScaleY', 0.1, 3, 0.01).name('Altura').onChange(applyFrontTextScale);
+frontTextFolder.add(config, 'frontTextScaleZ', 0.1, 3, 0.01).name('Profundidade').onChange(applyFrontTextScale);
+frontTextFolder.addColor(config, 'frontTextColor').name('Cor').onChange(applyFrontTextParams);
+frontTextFolder.addColor(config, 'frontTextEmissive').name('Luz Própria (Emissive)').onChange(applyFrontTextParams);
+frontTextFolder.add(config, 'frontTextEmissiveIntensity', 0, 2, 0.01).name('Intensidade da Luz').onChange(applyFrontTextParams);
+frontTextFolder.add(config, 'frontTextTransmission', 0, 1, 0.01).name('Transmissão (Vidro)').onChange(applyFrontTextParams);
+frontTextFolder.add(config, 'frontTextOpacity', 0, 1, 0.01).name('Opacidade').onChange(applyFrontTextParams);
+frontTextFolder.add(config, 'frontTextMetalness', 0, 1, 0.01).name('Metalizado').onChange(applyFrontTextParams);
+frontTextFolder.add(config, 'frontTextRoughness', 0, 1, 0.01).name('Rugosidade (Fosco)').onChange(applyFrontTextParams);
+frontTextFolder.add(config, 'frontTextIor', 1, 3, 0.01).name('Índice de Refração').onChange(applyFrontTextParams);
+frontTextFolder.add(config, 'frontTextThickness', 0, 2, 0.01).name('Espessura').onChange(applyFrontTextParams);
+
 // Shatter Physics settings
 const shatterFolder = gui.addFolder('Física do Vidro');
 shatterFolder.add(config, 'shatterPieces', 10, 500, 10).name('Qtd. de Cacos');
@@ -341,8 +450,12 @@ cameraFolder.add(cameraSettings, 'baseZ', 2, 20, 0.1).name('Zoom (Z)').onChange(
 
 // Lighting settings
 const lightFolder = gui.addFolder('Luzes');
+lightFolder.add(scene, 'environmentIntensity', 0, 5, 0.1).name('Brilho do HDRI');
+lightFolder.add(actions, 'useHDRI').name('Ativar HDRI (Reflexos)').onChange((val) => {
+  scene.environment = val ? hdriEnvMap : null;
+});
 lightFolder.addColor(ambientColorObj, 'color').name('Cor Ambiente').onChange(c => ambientLight.color.setHex(c));
-lightFolder.add(ambientLight, 'intensity', 0, 5, 0.1).name('Intensidade Ambiente');
+lightFolder.add(ambientLight, 'intensity', 0, 20, 0.1).name('Intensidade Ambiente');
 
 lightFolder.addColor(directionalColorObj, 'color').name('Cor Direcional').onChange(c => directionalLight.color.setHex(c));
 lightFolder.add(directionalLight, 'intensity', 0, 10, 0.1).name('Intens. Direcional');
@@ -371,6 +484,7 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   
   renderer.setSize(width, height);
+  galleryComposer.setSize(width, height);
   updateCameraZ();
   update3DText(); // Ensure text scales dynamically on resize
   
@@ -378,65 +492,83 @@ window.addEventListener('resize', () => {
   renderer.render(scene, camera);
 });
 
-// --- Text Ripple Interaction ---
-const raycaster = new THREE.Raycaster();
-const mouseVec = new THREE.Vector2(-10, -10);
-const targetHover = { value: 0 };
-
-window.addEventListener('mousemove', (e) => {
-  mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
-  mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
-});
-
 // --- Render Loop ---
 const clock = new THREE.Clock();
+const currentMouse = new THREE.Vector2(0.5, 0.5);
+const targetMouse = new THREE.Vector2(0.5, 0.5);
 
-const currentMouseUv = new THREE.Vector2(0.5, 0.5);
-const targetMouseUv = new THREE.Vector2(0.5, 0.5);
+window.addEventListener('mousemove', (e) => {
+  targetMouse.x = (e.clientX / window.innerWidth);
+  targetMouse.y = 1.0 - (e.clientY / window.innerHeight);
+});
+
+window.addEventListener('enterProjectGallery', (e) => {
+  gsap.to(camera.position, {
+    z: 1,
+    duration: 1.5,
+    ease: 'power3.inOut'
+  });
+  
+  const transitionLayer = document.getElementById('transition-layer');
+  gsap.to(transitionLayer, { 
+    opacity: 1, 
+    duration: 1, 
+    delay: 0.5,
+    onComplete: () => {
+      window.activeScene = 'gallery';
+      window.dispatchEvent(new CustomEvent('enterGalleryScene'));
+      gsap.to(transitionLayer, { opacity: 0, duration: 1 });
+    }
+  });
+});
+
+window.addEventListener('exitGalleryScene', (e) => {
+  const transitionLayer = document.getElementById('transition-layer');
+  gsap.to(transitionLayer, { 
+    opacity: 1, 
+    duration: 1,
+    onComplete: () => {
+      window.activeScene = 'main';
+      gsap.to(camera.position, {
+        z: cameraSettings.baseZ,
+        duration: 1.5,
+        ease: 'power3.out'
+      });
+      gsap.to(transitionLayer, { opacity: 0, duration: 1 });
+    }
+  });
+});
 
 function animate() {
   requestAnimationFrame(animate);
-  
+
+  const elapsedTime = clock.getElapsedTime();
   const delta = clock.getDelta();
 
   // Update screens
-  updateScreens();
-  
-  // Animate text ripple
-  if (textMesh) {
-    textUniforms.uTime.value += delta;
+  if (window.activeScene === 'main') {
+    updateScreens();
     
-    raycaster.setFromCamera(mouseVec, camera);
-    const intersects = raycaster.intersectObject(textMesh);
-    
-    if (intersects.length > 0) {
-      targetMouseUv.copy(intersects[0].uv);
-      targetHover.value = 1.0;
-    } else {
-      targetHover.value = 0.0;
+    // Animate floor water
+    if (reflector && reflector.material.uniforms) {
+      reflector.material.uniforms.time.value += delta;
+      reflector.material.uniforms.waveStrength.value = config.waveStrength;
+      reflector.material.uniforms.waveSpeed.value = config.waveSpeed;
     }
-    
-    // Calculate velocity
-    const velocityX = targetMouseUv.x - currentMouseUv.x;
-    const velocityY = targetMouseUv.y - currentMouseUv.y;
-    textUniforms.uMouseVelocity.value.set(velocityX, velocityY);
-    
-    // Lerp current mouse to target
-    currentMouseUv.lerp(targetMouseUv, config.textMouseLerp);
-    textUniforms.uMouse.value.copy(currentMouseUv);
-    
-    // Smooth fade in/out of the ripple
-    textUniforms.uHover.value += (targetHover.value - textUniforms.uHover.value) * 0.1;
   }
-  
-  // Animate floor water distortion
-  if (reflector && reflector.material.uniforms && reflector.material.uniforms.time) {
-    reflector.material.uniforms.time.value += delta;
-    reflector.material.uniforms.waveStrength.value = config.waveStrength;
-    reflector.material.uniforms.waveSpeed.value = config.waveSpeed;
+
+  // update text uniforms
+  textUniforms.uTime.value = elapsedTime * config.textWaveSpeed;
+
+  // ease mouse
+  currentMouse.lerp(targetMouse, config.textMouseLerp);
+  textUniforms.uMouse.value.copy(currentMouse);
+
+  if (window.activeScene === 'main') {
+    renderer.render(scene, camera);
+  } else {
+    galleryComposer.render();
   }
-  
-  renderer.render(scene, camera);
 }
 
 animate();

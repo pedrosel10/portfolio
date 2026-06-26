@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { FontLoader, Font } from 'three/addons/loaders/FontLoader.js';
+import { TTFLoader } from 'three/addons/loaders/TTFLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import { setupShatterInteraction } from './shatter.js';
 import gsap from 'gsap';
 import { config } from './config.js';
@@ -8,6 +11,7 @@ export const screensGroup = new THREE.Group();
 export let isFolded = true;
 export let isTransitioning = false;
 export const panelsData = [];
+export const frontTextMeshes = [];
 export const scrollState = { angle: 0, offsetX: 0 };
 
 const radius = 3;
@@ -138,6 +142,70 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
   panelsData.push(panelGroup);
   
   setupShatterInteraction(glassMesh, panelGroup);
+
+  // Add 3D text with glass material
+  const texts = ['BRAND', 'WEB', 'MARKETING'];
+  const ttfLoader = new TTFLoader();
+  ttfLoader.load('./CooperLtBT-Regular.ttf', (json) => {
+    const font = new Font(json);
+    const textGeo = new TextGeometry(texts[index], {
+      font: font,
+      size: 0.28, // 30% menor (0.4 * 0.70 = 0.28)
+      depth: 0.03, // made thinner
+      curveSegments: 12,
+      bevelEnabled: true,
+      bevelThickness: 0.005,
+      bevelSize: 0.005,
+      bevelSegments: 3
+    });
+    
+    textGeo.computeBoundingBox();
+    const centerOffset = - 0.5 * ( textGeo.boundingBox.max.x - textGeo.boundingBox.min.x );
+    const centerYOffset = - 0.5 * ( textGeo.boundingBox.max.y - textGeo.boundingBox.min.y );
+    textGeo.translate( centerOffset, centerYOffset, 0 );
+
+    const textMat = new THREE.MeshPhysicalMaterial({ 
+      color: config.frontTextColor,
+      emissive: config.frontTextEmissive,
+      emissiveIntensity: config.frontTextEmissiveIntensity,
+      transmission: config.frontTextTransmission,
+      opacity: config.frontTextOpacity,
+      metalness: config.frontTextMetalness,
+      roughness: config.frontTextRoughness,
+      ior: config.frontTextIor,
+      thickness: config.frontTextThickness,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    
+    const textMesh = new THREE.Mesh(textGeo, textMat);
+    textMesh.scale.set(config.frontTextScaleX, config.frontTextScaleY, config.frontTextScaleZ);
+    // Position it slightly in front of the screen
+    textMesh.position.set(0, 0, 0.4); 
+    
+    // Optional: make it bend using same logic, but for now simple translation is fine
+    // Or we bend it using position attributes:
+    const posAttribute = textGeo.attributes.position;
+    for (let i = 0; i < posAttribute.count; i++) {
+      const x = posAttribute.getX(i);
+      const y = posAttribute.getY(i);
+      const z = posAttribute.getZ(i);
+      
+      const angle = (x / flatWidth) * anglePerScreen;
+      // To curve it parallel to the screen, we need to keep its base distance
+      // radius + 0.4 (distance from center)
+      const rText = radius + 0.4 + z;
+      
+      const cX = rText * Math.sin(angle);
+      const cZ = rText * Math.cos(angle) - radius - 0.4; // keep it centered at z=0 locally, before offset
+      
+      posAttribute.setXYZ(i, cX, y, cZ);
+    }
+    textGeo.computeVertexNormals();
+
+    panelGroup.add(textMesh);
+    frontTextMeshes.push(textMesh);
+  });
 }
 
 function setFoldedState(folded, R, S) {

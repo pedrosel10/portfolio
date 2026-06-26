@@ -13,6 +13,8 @@ export function initMouse(scene, camera, screensGroup) {
   let targetTiltY = 0;
   
   window.addEventListener('mousemove', (e) => {
+    if (window.activeScene !== 'main') return;
+    
     // Normalize mouse position: -1 to +1
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -61,11 +63,13 @@ export function initMouse(scene, camera, screensGroup) {
   let startX = 0;
   let startY = 0;
   window.addEventListener('pointerdown', (e) => {
+    if (window.activeScene !== 'main') return;
     startX = e.clientX;
     startY = e.clientY;
   });
 
   window.addEventListener('pointerup', (e) => {
+    if (window.activeScene !== 'main') return;
     const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
     if (dist > 5) return; // Ignore if it was a drag
 
@@ -74,8 +78,23 @@ export function initMouse(scene, camera, screensGroup) {
     const screenHit = intersects.find(hit => hit.object.userData.isScreen);
     
     if (screenHit) {
-      // Dispatch custom event to the mesh
-      screenHit.object.dispatchEvent({ type: 'shatter', detail: { point: screenHit.point } });
+      // Find the screen index. The screenHit.object is a Mesh.
+      // Its parent is the panelGroup, which is stored in panelsData.
+      const parentGroup = screenHit.object.parent;
+      let clickedIndex = -1;
+      
+      // Attempt to find index from screensGroup children (we know there are 3 panels)
+      const childIndex = screensGroup.children.indexOf(parentGroup);
+      if (childIndex !== -1) {
+        clickedIndex = childIndex;
+      }
+
+      window.dispatchEvent(new CustomEvent('enterProjectGallery', { 
+        detail: { 
+          index: clickedIndex,
+          point: screenHit.point 
+        } 
+      }));
     }
   });
 }
