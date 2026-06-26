@@ -52,7 +52,7 @@ export function createScreens(scene) {
   const S = (radius * anglePerScreen) + (radius * angleGap);
   
   const textureLoader = new THREE.TextureLoader();
-  const images = ['/12802.jpg', '/1644.jpg', '/29038.jpg'];
+  const images = ['./12802.jpg', './1644.jpg', './29038.jpg'];
   
   for (let i = 0; i < numScreens; i++) {
     const texture = textureLoader.load(images[i], (loadedTex) => {
