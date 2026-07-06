@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import gsap from 'gsap';
+import { isFolded, toggleFold } from './screens.js';
 
 export function initMouse(scene, camera, screensGroup) {
   const mouse = new THREE.Vector2();
@@ -86,12 +87,20 @@ export function initMouse(scene, camera, screensGroup) {
       
       // Somente abre a galeria se for a tela "BRAND" (índice 0)
       if (clickedIndex === 0) {
-        window.dispatchEvent(new CustomEvent('enterProjectGallery', { 
-          detail: { 
-            index: clickedIndex,
-            point: screenHit.point 
-          } 
-        }));
+        const triggerTransition = () => {
+          window.dispatchEvent(new CustomEvent('enterProjectGallery', { 
+            detail: { 
+              index: clickedIndex,
+              point: screenHit.point 
+            } 
+          }));
+        };
+
+        if (isFolded) {
+          toggleFold(triggerTransition, clickedIndex);
+        } else {
+          triggerTransition();
+        }
       }
     }
   });

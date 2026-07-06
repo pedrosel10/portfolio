@@ -1,5 +1,5 @@
 import gsap from 'gsap';
-import { isFolded, scrollState, S } from './screens.js';
+import { isFolded, isTransitioning, scrollState, S } from './screens.js';
 import { config } from './config.js';
 
 export function initScroll() {
@@ -9,6 +9,7 @@ export function initScroll() {
   const anglePerPanel = (120 * Math.PI) / 180; // 120 degrees
   
   window.addEventListener('wheel', (e) => {
+    if (isTransitioning) return;
     if (isFolded) {
       // Cylinder mode
       let targetRotation = scrollState.angle + e.deltaY * config.scrollSensitivity;
@@ -77,6 +78,7 @@ export function initScroll() {
   let lastDragTime = 0;
 
   window.addEventListener('pointerdown', (e) => {
+    if (isTransitioning) return;
     // Only capture if on the canvas (app container) to prevent interfering with UI
     if (e.target.tagName !== 'CANVAS') return;
     isDragging = true;
@@ -86,6 +88,10 @@ export function initScroll() {
   });
 
   window.addEventListener('pointermove', (e) => {
+    if (isTransitioning) {
+      isDragging = false;
+      return;
+    }
     if (!isDragging) return;
     
     const deltaX = e.clientX - lastPointerX;

@@ -33,7 +33,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
 
 export const cameraSettings = { baseZ: 6.1 };
-const fogSettings = { baseNear: 7.1, baseFar: 13.2 };
+const fogSettings = { baseNear: 7.1, baseFar: 15.1 };
 
 // Background is transparent to show the HTML text behind it
 // Fog can help fade the reflection
@@ -139,27 +139,56 @@ const outputPass = new OutputPass();
 galleryComposer.addPass(outputPass);
 
 let hdriEnvMap = null;
+let originalTexture = null;
+let originalHdriData = null;
+let hdriWidth = 0;
+let hdriHeight = 0;
+
 const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
-new EXRLoader().load('./142_hdrmaps_com_free_1K.exr', (texture) => {
-  hdriEnvMap = pmremGenerator.fromEquirectangular(texture).texture;
+function applyHdriSaturation() {
+  if (!originalHdriData || !originalTexture) return;
+  const saturation = config.hdriSaturation;
+  const data = originalTexture.image.data;
+  const stride = originalHdriData.length / (hdriWidth * hdriHeight);
+  
+  for (let i = 0; i < originalHdriData.length; i += stride) {
+    const r = originalHdriData[i];
+    const g = originalHdriData[i + 1];
+    const b = originalHdriData[i + 2];
+    const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    data[i]     = L + saturation * (r - L);
+    data[i + 1] = L + saturation * (g - L);
+    data[i + 2] = L + saturation * (b - L);
+  }
+  originalTexture.needsUpdate = true;
+  
+  if (hdriEnvMap) hdriEnvMap.dispose();
+  hdriEnvMap = pmremGenerator.fromEquirectangular(originalTexture).texture;
   if (actions.useHDRI) {
     scene.environment = hdriEnvMap;
   }
-  texture.dispose();
+}
+
+new EXRLoader().load('./braustuble_alley_1k.exr', (texture) => {
+  originalTexture = texture;
+  hdriWidth = texture.image.width;
+  hdriHeight = texture.image.height;
+  originalHdriData = texture.image.data.slice();
+  applyHdriSaturation();
 });
 
 // --- Lighting ---
 // Ambient light
-const ambientColorObj = { color: 0xffffff };
-const ambientLight = new THREE.AmbientLight(ambientColorObj.color, 10.8); // Intensidade definida no JSON
+const ambientColorObj = { color: 0xebebeb };
+const ambientLight = new THREE.AmbientLight(ambientColorObj.color, 4.5); // Intensidade definida no JSON
 scene.add(ambientLight);
 
 // Directional light for subtle shadows and highlights
 const directionalColorObj = { color: 0xffffff };
 const directionalLight = new THREE.DirectionalLight(directionalColorObj.color, 0); // Intensidade 0 conforme JSON fornecido
-directionalLight.position.set(7.3, 1.2, 4.6);
+directionalLight.position.set(9, 1.3, 4.7);
 directionalLight.castShadow = true;
 directionalLight.shadow.mapSize.width = 512;
 directionalLight.shadow.mapSize.height = 512;
@@ -185,7 +214,7 @@ document.getElementById('toggle-fold').addEventListener('click', () => {
 
 // --- GUI Setup ---
 const gui = new GUI({ title: 'Configurações do Ambiente' });
-gui.hide(); // Hide the GUI for now
+gui.hide();
 
 const actions = {
   useHDRI: true,
@@ -226,14 +255,14 @@ const actions = {
 gui.add(actions, 'copySettings').name('💾 Copiar Configurações');
 
 // Theme settings
-const themeFolder = gui.addFolder('Cores do Site');
+const themeFolder = gui.addFolder('Cores do Site').close();
 themeFolder.addColor(config, 'bgColor').name('Fundo do Site').onChange(c => {
   document.body.style.backgroundColor = c;
   renderer.setClearColor(c, 1);
 });
 
 // Animation & Scroll settings
-const animFolder = gui.addFolder('Animação e Scroll');
+const animFolder = gui.addFolder('Animação e Scroll').close();
 animFolder.add(config, 'foldDuration', 0.5, 5.0, 0.1).name('Vel. de Abertura');
 animFolder.add(config, 'scrollSensitivity', 0.001, 0.01, 0.001).name('Vel. Scroll Cilindro');
 animFolder.add(config, 'flatScrollSensitivity', 0.001, 0.03, 0.001).name('Vel. Scroll Panorama');
@@ -254,7 +283,7 @@ const applyMaterialParams = () => {
   });
 };
 
-const facesFolder = gui.addFolder('Visual das Telas de Vidro');
+const facesFolder = gui.addFolder('Visual das Telas de Vidro').close();
 facesFolder.addColor(config, 'faceColor1').name('Cor Tela 1').onChange(applyMaterialParams);
 facesFolder.addColor(config, 'faceColor2').name('Cor Tela 2').onChange(applyMaterialParams);
 facesFolder.addColor(config, 'faceColor3').name('Cor Tela 3').onChange(applyMaterialParams);
@@ -286,7 +315,7 @@ const applyFrontTextScale = () => {
   });
 };
 
-const frontTextFolder = gui.addFolder('Visual do Texto 3D (Telas)');
+const frontTextFolder = gui.addFolder('Visual do Texto 3D (Telas)').close();
 frontTextFolder.add(config, 'frontTextScaleX', 0.1, 3, 0.01).name('Largura').onChange(applyFrontTextScale);
 frontTextFolder.add(config, 'frontTextScaleY', 0.1, 3, 0.01).name('Altura').onChange(applyFrontTextScale);
 frontTextFolder.add(config, 'frontTextScaleZ', 0.1, 3, 0.01).name('Profundidade').onChange(applyFrontTextScale);
@@ -301,19 +330,20 @@ frontTextFolder.add(config, 'frontTextIor', 1, 3, 0.01).name('Índice de Refraç
 frontTextFolder.add(config, 'frontTextThickness', 0, 2, 0.01).name('Espessura').onChange(applyFrontTextParams);
 
 // Shatter Physics settings
-const shatterFolder = gui.addFolder('Física do Vidro');
+const shatterFolder = gui.addFolder('Física do Vidro').close();
 shatterFolder.add(config, 'shatterPieces', 10, 500, 10).name('Qtd. de Cacos');
 shatterFolder.add(config, 'shatterForce', 0.1, 10.0, 0.1).name('Força da Explosão');
 shatterFolder.add(config, 'shatterGravity', 0.0, 10.0, 0.1).name('Força da Gravidade');
 shatterFolder.add(config, 'shatterDuration', 0.1, 5.0, 0.1).name('Duração da Queda');
 
 // Camera settings
-const cameraFolder = gui.addFolder('Camera');
+const cameraFolder = gui.addFolder('Camera').close();
 cameraFolder.add(cameraSettings, 'baseZ', 2, 20, 0.1).name('Zoom (Z)').onChange(updateCameraZ);
 
 // Lighting settings
-const lightFolder = gui.addFolder('Luzes');
+const lightFolder = gui.addFolder('Luzes').close();
 lightFolder.add(scene, 'environmentIntensity', 0, 5, 0.1).name('Brilho do HDRI');
+lightFolder.add(config, 'hdriSaturation', 0, 2, 0.05).name('Saturação do HDRI').onChange(applyHdriSaturation);
 lightFolder.add(actions, 'useHDRI').name('Ativar HDRI (Reflexos)').onChange((val) => {
   scene.environment = val ? hdriEnvMap : null;
 });
@@ -327,13 +357,13 @@ lightFolder.add(directionalLight.position, 'y', -10, 20, 0.1).name('Posição Y'
 lightFolder.add(directionalLight.position, 'z', -10, 10, 0.1).name('Posição Z');
 
 // Fog settings
-const fogFolder = gui.addFolder('Névoa (Fog)');
+const fogFolder = gui.addFolder('Névoa (Fog)').close();
 fogFolder.addColor(fogColorObj, 'color').name('Cor da Névoa').onChange(c => scene.fog.color.setHex(c));
 fogFolder.add(fogSettings, 'baseNear', 1, 30, 0.1).name('Início').onChange(updateCameraZ);
 fogFolder.add(fogSettings, 'baseFar', 5, 80, 0.1).name('Fim').onChange(updateCameraZ);
 
 // Floor settings
-const floorFolder = gui.addFolder('Piso / Reflexo (Água)');
+const floorFolder = gui.addFolder('Piso / Reflexo (Água)').close();
 floorFolder.addColor(floorColorObj, 'color').name('Cor do Reflexo').onChange(c => reflector.material.uniforms.color.value.setHex(c));
 floorFolder.add(config, 'waveStrength', 0, 0.1, 0.001).name('Força da Onda');
 floorFolder.add(config, 'waveSpeed', 0, 5, 0.1).name('Velocidade da Onda');

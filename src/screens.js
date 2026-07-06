@@ -56,7 +56,7 @@ export function createScreens(scene) {
   const S = (radius * anglePerScreen) + (radius * angleGap);
   
   const textureLoader = new THREE.TextureLoader();
-  const images = ['./12802.jpg', './1644.jpg', './29038.jpg'];
+  const images = ['./12802.webp', './1644.webp', './29038.webp'];
   
   for (let i = 0; i < numScreens; i++) {
     const texture = textureLoader.load(images[i], (loadedTex) => {
@@ -129,6 +129,12 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
     transparent: true
   });
   
+  // CRITICAL FIX: The base geometry is flat, but the morph target is curved (and extends deeply in -Z). 
+  // We must expand the bounding sphere so it doesn't get culled prematurely when spinning, 
+  // which causes transmission glitches (white squares).
+  geo.computeBoundingSphere();
+  geo.boundingSphere.radius += radius * 1.5; 
+  
   const glassMesh = new THREE.Mesh(geo, glassMat);
   glassMesh.castShadow = true;
   glassMesh.receiveShadow = true;
@@ -164,18 +170,20 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
     const centerYOffset = - 0.5 * ( textGeo.boundingBox.max.y - textGeo.boundingBox.min.y );
     textGeo.translate( centerOffset, centerYOffset, 0 );
 
+    // Use MeshStandardMaterial instead of MeshPhysicalMaterial+transmission for text.
+    // This eliminates 3 extra transmission render passes per frame, preventing 
+    // white square glitches during fast rotation while keeping the glass-like look.
     const textMat = new THREE.MeshPhysicalMaterial({ 
       color: config.frontTextColor,
       emissive: config.frontTextEmissive,
       emissiveIntensity: config.frontTextEmissiveIntensity,
-      transmission: config.frontTextTransmission,
+      transmission: 0, // Disabled transmission to prevent white square overlap glitches
       opacity: config.frontTextOpacity,
       metalness: config.frontTextMetalness,
       roughness: config.frontTextRoughness,
-      ior: config.frontTextIor,
-      thickness: config.frontTextThickness,
       transparent: true,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide, // FrontSide prevents inner faces from rendering, giving solid 3D volume
+      depthWrite: true // depthWrite is required for 3D depth perception
     });
     
     const textMesh = new THREE.Mesh(textGeo, textMat);
@@ -202,6 +210,10 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
       posAttribute.setXYZ(i, cX, y, cZ);
     }
     textGeo.computeVertexNormals();
+    // CRITICAL FIX: Recompute bounding box and sphere after modifying vertices 
+    // so frustum culling and the transmission render target don't glitch (white squares).
+    textGeo.computeBoundingBox();
+    textGeo.computeBoundingSphere();
 
     panelGroup.add(textMesh);
     frontTextMeshes.push(textMesh);
@@ -267,20 +279,32 @@ function assignDummies(snapAngle) {
   targetDummies[leftIndex] = leftDummy;
 }
 
-export function toggleFold() {
+export function toggleFold(callback, targetIndex) {
   if (isTransitioning) return;
   const duration = config.foldDuration;
   const ease = "sine.inOut";
 
   if (isFolded) {
     isTransitioning = true;
-    const snapAngle = Math.round(scrollState.angle / ((120 * Math.PI) / 180)) * ((120 * Math.PI) / 180);
+    
+    let snapAngle;
+    if (targetIndex !== undefined && targetIndex !== null) {
+      // Calculate snap angle based on targeted panel index to avoid glitches
+      const baseTargetAngle = -angles[targetIndex];
+      let diff = (baseTargetAngle - scrollState.angle) % (2 * Math.PI);
+      if (diff > Math.PI) diff -= 2 * Math.PI;
+      if (diff <= -Math.PI) diff += 2 * Math.PI;
+      snapAngle = scrollState.angle + diff;
+    } else {
+      snapAngle = Math.round(scrollState.angle / ((120 * Math.PI) / 180)) * ((120 * Math.PI) / 180);
+    }
     
     const startUnfold = () => {
       assignDummies(snapAngle);
       isFolded = false;
       runFoldAnimation(false, duration, ease, () => {
         isTransitioning = false;
+        if (callback) callback();
       });
     };
 
@@ -311,6 +335,7 @@ export function toggleFold() {
       runFoldAnimation(true, duration, ease, () => {
         isFolded = true;
         isTransitioning = false;
+        if (callback) callback();
       });
     };
 
@@ -383,12 +408,10 @@ export function updateScreens() {
         // Remove mouse parallax/world position offset to get local coordinates
         panelsGroup.worldToLocal(vec);
         
-        if (!isTransitioning) {
-          // Infinite Scroll Wrap Logic
-          vec.x += scrollState.offsetX;
-          while (vec.x > 1.5 * S) vec.x -= 3 * S;
-          while (vec.x < -1.5 * S) vec.x += 3 * S;
-        }
+        // Infinite Scroll Wrap Logic
+        vec.x += scrollState.offsetX;
+        while (vec.x > 1.5 * S) vec.x -= 3 * S;
+        while (vec.x < -1.5 * S) vec.x += 3 * S;
 
         panelGroup.position.copy(vec);
         

@@ -1,8 +1,8 @@
 export const config = {
   // Theme
   bgColor: '#ffffff',
+  hdriSaturation: 1,
 
-  
   // Animation
   foldDuration: 1.2,
   
@@ -17,32 +17,31 @@ export const config = {
   shatterDuration: 1,
 
   // Face Materials
-  faceColor1: '#ffdddd',
-  faceColor2: '#cce8b5',
-  faceColor3: '#ddddff',
-  transmission: 0.18,
+  faceColor1: '#e0e0e0',
+  faceColor2: '#ebebeb',
+  faceColor3: '#e0edd4',
+  transmission: 0.24,
   opacity: 1,
   metalness: 0.39,
-  roughness: 0.23,
-  ior: 1.91,
+  roughness: 0.63,
+  ior: 2.03,
   thickness: 0.05,
 
   // Front 3D Text (BRAND)
-  frontTextScaleX: 1,
-  frontTextScaleY: 1,
-  frontTextScaleZ: 0.6,
+  frontTextScaleX: 0.73,
+  frontTextScaleY: 3,
+  frontTextScaleZ: 1.41,
   frontTextColor: '#ffffff',
-  frontTextEmissive: '#ffffff', // Para deixar o texto mais iluminado/claro
+  frontTextEmissive: '#ffffff',
   frontTextEmissiveIntensity: 0.32,
-  frontTextTransmission: 1,
-  frontTextOpacity: 1,
+  frontTextTransmission: 0,
+  frontTextOpacity: 0.82,
   frontTextMetalness: 0,
   frontTextRoughness: 0.46,
   frontTextIor: 1.24,
-  frontTextThickness: 1,
+  frontTextThickness: 2,
   
   // Water Reflection
-  waveStrength: 0.003,
-  waveSpeed: 4.8,
-  
+  waveStrength: 0.005,
+  waveSpeed: 0.9,
 };
