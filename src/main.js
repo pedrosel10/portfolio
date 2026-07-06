@@ -437,8 +437,6 @@ window.addEventListener('resize', () => {
 const timer = new THREE.Timer();
 
 window.addEventListener('enterProjectGallery', (e) => {
-  const themeMeta = document.querySelector('meta[name="theme-color"]');
-  if (themeMeta) themeMeta.setAttribute('content', '#050505');
   gsap.to(camera.position, {
     z: 1,
     duration: 1.5,
@@ -459,8 +457,6 @@ window.addEventListener('enterProjectGallery', (e) => {
 });
 
 window.addEventListener('exitGalleryScene', (e) => {
-  const themeMeta = document.querySelector('meta[name="theme-color"]');
-  if (themeMeta) themeMeta.setAttribute('content', config.bgColor);
   const transitionLayer = document.getElementById('transition-layer');
   gsap.to(transitionLayer, { 
     opacity: 1, 
