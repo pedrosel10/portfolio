@@ -71,6 +71,14 @@ export function initMouse(scene, camera, screensGroup) {
 
   window.addEventListener('pointerup', (e) => {
     if (window.activeScene !== 'main') return;
+    
+    // Apaga a luz no mobile se tirar o dedo da tela
+    if (e.pointerType === 'touch') {
+      gsap.to(cursorLight, { intensity: 0, duration: 0.5 });
+      mouse.x = -9999;
+      mouse.y = -9999;
+    }
+    
     const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
     if (dist > 5) return; // Ignore if it was a drag
 
