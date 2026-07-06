@@ -13,7 +13,7 @@ export function initMouse(scene, camera, screensGroup) {
   let targetTiltX = 0;
   let targetTiltY = 0;
   
-  window.addEventListener('mousemove', (e) => {
+  window.addEventListener('pointermove', (e) => {
     if (window.activeScene !== 'main') return;
     
     // Normalize mouse position: -1 to +1
