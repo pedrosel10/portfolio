@@ -437,6 +437,9 @@ window.addEventListener('resize', () => {
 const timer = new THREE.Timer();
 
 window.addEventListener('enterProjectGallery', (e) => {
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.setAttribute('content', '#050505');
+  
   gsap.to(camera.position, {
     z: 1,
     duration: 1.5,
@@ -444,6 +447,7 @@ window.addEventListener('enterProjectGallery', (e) => {
   });
   
   const transitionLayer = document.getElementById('transition-layer');
+  transitionLayer.style.display = 'block';
   gsap.to(transitionLayer, { 
     opacity: 1, 
     duration: 1, 
@@ -451,13 +455,19 @@ window.addEventListener('enterProjectGallery', (e) => {
     onComplete: () => {
       window.activeScene = 'gallery';
       window.dispatchEvent(new CustomEvent('enterGalleryScene'));
-      gsap.to(transitionLayer, { opacity: 0, duration: 1 });
+      gsap.to(transitionLayer, { opacity: 0, duration: 1, onComplete: () => {
+        transitionLayer.style.display = 'none';
+      }});
     }
   });
 });
 
 window.addEventListener('exitGalleryScene', (e) => {
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta) themeMeta.setAttribute('content', config.bgColor);
+  
   const transitionLayer = document.getElementById('transition-layer');
+  transitionLayer.style.display = 'block';
   gsap.to(transitionLayer, { 
     opacity: 1, 
     duration: 1,
@@ -482,7 +492,10 @@ window.addEventListener('exitGalleryScene', (e) => {
           }
         }
       });
-      gsap.to(transitionLayer, { opacity: 0, duration: 1 });
+      
+      gsap.to(transitionLayer, { opacity: 0, duration: 1, onComplete: () => {
+        transitionLayer.style.display = 'none';
+      }});
     }
   });
 });
