@@ -320,7 +320,7 @@ function openProject(clickedMesh) {
   window.clickedMesh = clickedMesh;
   
   // Tell main to update the global button to close project mode
-  window.dispatchEvent(new CustomEvent('enterProjectGallery'));
+  window.dispatchEvent(new CustomEvent('openProjectDetail'));
 
   // Fade out other meshes, brighten clicked
   gridMeshes.forEach(m => {

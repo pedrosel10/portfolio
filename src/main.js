@@ -248,7 +248,7 @@ export function setGlobalActionText(text, newActionType = null) {
   }, 200); // Metade do tempo da transition do CSS
 }
 
-window.addEventListener('enterProjectGallery', () => {
+window.addEventListener('openProjectDetail', () => {
   setGlobalActionText('Voltar ao Grid', 'exitProject');
 });
 window.addEventListener('exitProjectGallery', () => {
