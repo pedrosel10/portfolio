@@ -102,7 +102,7 @@ export function initScroll() {
     dragVelocityX = deltaX / dt;
     
     // Drag sensitivity
-    const dragSens = 0.002;
+    const dragSens = 0.006;
     
     if (isFolded) {
       // Cylinder mode
@@ -116,7 +116,7 @@ export function initScroll() {
       });
     } else {
       // Flat panorama mode
-      scrollState.offsetX -= deltaX * dragSens * 5;
+      scrollState.offsetX += deltaX * dragSens * 5; // Corrigida a direção invertida (+ em vez de -)
       gsap.to(scrollState, {
         offsetX: scrollState.offsetX,
         duration: 0,
@@ -132,27 +132,30 @@ export function initScroll() {
     if (!isDragging) return;
     isDragging = false;
     
-    const dragSens = 0.002;
+    const dragSens = 0.006;
+    const inertiaForce = 150; // Menor inércia para ficar mais "gripado" na posição desejada
+    
     if (isFolded) {
       // Calculate where the inertia WOULD land
-      const projectedRotation = scrollState.angle + (dragVelocityX * dragSens * 250); 
+      const projectedRotation = scrollState.angle + (dragVelocityX * dragSens * inertiaForce); 
       // Snap that projected destination to the nearest panel
       const nearestSnap = Math.round(projectedRotation / anglePerPanel) * anglePerPanel;
       
       gsap.to(scrollState, {
         angle: nearestSnap,
-        duration: 0.8,
-        ease: 'power3.out',
+        duration: 0.4, // Mais rápido, sensação magnética
+        ease: 'power4.out',
         overwrite: 'auto'
       });
     } else {
-      const projectedOffsetX = scrollState.offsetX - (dragVelocityX * dragSens * 5 * 250);
+      // Corrigida a direção invertida (+ em vez de -)
+      const projectedOffsetX = scrollState.offsetX + (dragVelocityX * dragSens * 5 * inertiaForce);
       const nearestSnapX = Math.round(projectedOffsetX / S) * S;
       
       gsap.to(scrollState, {
         offsetX: nearestSnapX,
-        duration: 0.8,
-        ease: 'power3.out',
+        duration: 0.4, // Mais rápido, sensação magnética
+        ease: 'power4.out',
         overwrite: 'auto'
       });
     }
