@@ -48,8 +48,10 @@ export function initMouse(scene, camera, screensGroup) {
       
       cursorLight.position.copy(lightPos);
       
-      // Fade in light
-      gsap.to(cursorLight, { intensity: 4, duration: 0.2 });
+      // Fade in light (slightly stronger on mobile as requested)
+      const isMobile = window.innerWidth < 768;
+      const targetIntensity = isMobile ? 4.5 : 4;
+      gsap.to(cursorLight, { intensity: targetIntensity, duration: 0.2 });
       
       // Change cursor
       document.body.style.cursor = 'pointer';

@@ -150,7 +150,7 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
   setupShatterInteraction(glassMesh, panelGroup);
 
   // Add 3D text with glass material
-  const texts = ['BRAND', 'WEB', 'MARKETING'];
+  const texts = ['BRAND', 'WEB', 'MKT'];
   const ttfLoader = new TTFLoader();
   ttfLoader.load('./CooperLtBT-Regular.ttf', (json) => {
     const font = new Font(json);
@@ -158,11 +158,11 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
       font: font,
       size: 0.28, // 30% menor (0.4 * 0.70 = 0.28)
       depth: 0.03, // made thinner
-      curveSegments: 12,
+      curveSegments: 24, // Bordas muito mais suaves para refração premium
       bevelEnabled: true,
       bevelThickness: 0.005,
       bevelSize: 0.005,
-      bevelSegments: 3
+      bevelSegments: 6 // Canto super arredondado para capturar highlights
     });
     
     textGeo.computeBoundingBox();
@@ -170,24 +170,25 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
     const centerYOffset = - 0.5 * ( textGeo.boundingBox.max.y - textGeo.boundingBox.min.y );
     textGeo.translate( centerOffset, centerYOffset, 0 );
 
-    // Use MeshStandardMaterial instead of MeshPhysicalMaterial+transmission for text.
-    // This eliminates 3 extra transmission render passes per frame, preventing 
-    // white square glitches during fast rotation while keeping the glass-like look.
     const textMat = new THREE.MeshPhysicalMaterial({ 
       color: config.frontTextColor,
       emissive: config.frontTextEmissive,
       emissiveIntensity: config.frontTextEmissiveIntensity,
-      transmission: 0, // Disabled transmission to prevent white square overlap glitches
+      transmission: config.frontTextTransmission,
       opacity: config.frontTextOpacity,
       metalness: config.frontTextMetalness,
       roughness: config.frontTextRoughness,
+      ior: config.frontTextIor,
+      thickness: config.frontTextThickness,
+      clearcoat: 1.0, // Acabamento de verniz espelhado para visual premium de vidro
+      clearcoatRoughness: 0.0,
       transparent: true,
       side: THREE.FrontSide, // FrontSide prevents inner faces from rendering, giving solid 3D volume
       depthWrite: true // depthWrite is required for 3D depth perception
     });
     
     const textMesh = new THREE.Mesh(textGeo, textMat);
-    textMesh.scale.set(config.frontTextScaleX, config.frontTextScaleY, config.frontTextScaleZ);
+    textMesh.scale.set(config.frontTextScale, config.frontTextScale, config.frontTextScale);
     // Position it slightly in front of the screen
     textMesh.position.set(0, 0, 0.4); 
     

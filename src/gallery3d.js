@@ -19,22 +19,97 @@ window.addEventListener('resize', () => {
   galleryCamera.updateProjectionMatrix();
 });
 
-const textureLoader = new THREE.TextureLoader();
-const coverTex = textureLoader.load('./PROJETO 01/imagem1_1x.webp', (tex) => {
-  const imgWidth = tex.image.width;
-  const imgHeight = tex.image.height;
-  const imgAspect = imgWidth / imgHeight;
-  const planeAspect = 1; // itemWidth (300) / itemHeight (300)
-
-  if (imgAspect > planeAspect) {
-    tex.repeat.set(planeAspect / imgAspect, 1);
-    tex.offset.set((1 - planeAspect / imgAspect) / 2, 0);
+function applyCoverAspect(tex) {
+  const imgAspect = tex.image.width / tex.image.height;
+  if (imgAspect > 1) {
+    tex.repeat.set(1 / imgAspect, 1);
+    tex.offset.set((1 - 1 / imgAspect) / 2, 0);
   } else {
-    tex.repeat.set(1, imgAspect / planeAspect);
-    tex.offset.set(0, (1 - imgAspect / planeAspect) / 2);
+    tex.repeat.set(1, imgAspect);
+    tex.offset.set(0, (1 - imgAspect) / 2);
   }
-});
-coverTex.colorSpace = THREE.SRGBColorSpace;
+}
+
+const textureLoader = new THREE.TextureLoader();
+
+const projectsData = [
+  {
+    cover: './PROJETO 01/imagem1_1x.webp',
+    images: [
+      './PROJETO 01/imagem2_1x.webp',
+      './PROJETO 01/imagem3_1x.webp',
+      './PROJETO 01/imagem4_1x.webp',
+      './PROJETO 01/imagem5_1x.webp',
+      './PROJETO 01/imagem6_1x.webp',
+      './PROJETO 01/imagem7_1x.webp',
+      './PROJETO 01/imagem8_1x.webp'
+    ]
+  },
+  {
+    cover: './PROJETO 02/keyvisual15_1x.webp',
+    images: [
+      './PROJETO 02/keyvisual16_1x.webp',
+      './PROJETO 02/keyvisual17_1x.webp',
+      './PROJETO 02/keyvisual18_1x.webp',
+      './PROJETO 02/keyvisual19_1x.webp',
+      './PROJETO 02/keyvisual20_1x.webp',
+      './PROJETO 02/keyvisual21_1x.webp',
+      './PROJETO 02/keyvisual22_1x.webp',
+      './PROJETO 02/keyvisual23_1x.webp',
+      './PROJETO 02/keyvisual24_1x.webp',
+      './PROJETO 02/keyvisual25_1x.webp',
+      './PROJETO 02/keyvisual26_1x.webp',
+      './PROJETO 02/keyvisual27_1x.webp',
+      './PROJETO 02/keyvisual28_1x.webp',
+      './PROJETO 02/keyvisual29_1x.webp',
+      './PROJETO 02/keyvisual30_1x.webp',
+      './PROJETO 02/keyvisual31_1x.webp',
+      './PROJETO 02/keyvisual32_1x.webp',
+      './PROJETO 02/keyvisual33_1x.webp',
+      './PROJETO 02/keyvisual34_1x.webp',
+      './PROJETO 02/keyvisual35_1x.webp'
+    ]
+  },
+  {
+    cover: './PROJETO 03/1128386_oq3a6w1_1_1x.webp',
+    images: [
+      './PROJETO 03/18378685_subway2escamockup4fp_1_1_1x.webp',
+      './PROJETO 03/21667584_metal_sheet_logo_mockup_1_1x.webp',
+      './PROJETO 03/23444374_6713390_1_1x.webp',
+      './PROJETO 03/24943259_pencil_sketch_logo_mockup_02_1_1_1x.webp',
+      './PROJETO 03/29305360_shopping_bag_mockup_11_2_1x.webp',
+      './PROJETO 03/3383781_57286_1_1x.webp',
+      './PROJETO 03/74166512_stationery_mockup_dark_style_1_1x.webp',
+      './PROJETO 03/8835946_2594_1_1x.webp',
+      './PROJETO 03/free_mousepad_mockup_3_1_1x.webp',
+      './PROJETO 03/free_poster_frame_mockup_1_1_1x.webp',
+      './PROJETO 03/stationery_mockup_ok_3_1_1x.webp'
+    ]
+  },
+  {
+    cover: './PROJETO 04/t02_1_1x.webp',
+    images: [
+      './PROJETO 04/t03_1_1x.webp',
+      './PROJETO 04/t04_1_1x.webp',
+      './PROJETO 04/t05_1_1x.webp',
+      './PROJETO 04/t06_1_1x.webp',
+      './PROJETO 04/t07_1_1x.webp',
+      './PROJETO 04/t08_1_1x.webp',
+      './PROJETO 04/t09_1_1x.webp',
+      './PROJETO 04/t010_1_1x.webp',
+      './PROJETO 04/t011_1_1x.webp',
+      './PROJETO 04/t012_1_1x.webp',
+      './PROJETO 04/t013_1_1x.webp',
+      './PROJETO 04/t014_1_1x.webp',
+      './PROJETO 04/t015_1_1x.webp',
+      './PROJETO 04/t016_1_1x.webp',
+      './PROJETO 04/t017_1_1x.webp',
+      './PROJETO 04/t018_1_1x.webp',
+      './PROJETO 04/t019_1_1x.webp',
+      './PROJETO 04/t020_1_1x.webp'
+    ]
+  }
+];
 
 // Background Parallax Grid
 const bgGridGeo = new THREE.PlaneGeometry(10000, 10000);
@@ -72,15 +147,7 @@ const bgGrid = new THREE.Mesh(bgGridGeo, bgGridMat);
 bgGrid.position.z = -50;
 galleryScene.add(bgGrid);
 
-const projectImages = [
-  './PROJETO 01/imagem2_1x.webp',
-  './PROJETO 01/imagem3_1x.webp',
-  './PROJETO 01/imagem4_1x.webp',
-  './PROJETO 01/imagem5_1x.webp',
-  './PROJETO 01/imagem6_1x.webp',
-  './PROJETO 01/imagem7_1x.webp',
-  './PROJETO 01/imagem8_1x.webp'
-];
+
 
 const cols = 5;
 const rows = 5;
@@ -95,17 +162,35 @@ galleryScene.add(gridGroup);
 const gridMeshes = [];
 const planeGeo = new THREE.PlaneGeometry(itemWidth, itemHeight);
 
+let gridIndex = 0;
+const projectAppearanceCount = new Array(projectsData.length).fill(0);
+
 for (let r = 0; r < rows; r++) {
   for (let c = 0; c < cols; c++) {
+    const projIndex = gridIndex % projectsData.length;
+    const pData = projectsData[projIndex];
+    
+    const count = projectAppearanceCount[projIndex];
+    projectAppearanceCount[projIndex]++;
+    
+    let coverSrc = pData.cover;
+    if (count > 0) {
+      coverSrc = pData.images[(count - 1) % pData.images.length];
+    }
+    
+    const tex = textureLoader.load(coverSrc, applyCoverAspect);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    
     const mat = new THREE.MeshBasicMaterial({ 
-      map: coverTex, 
+      map: tex, 
       transparent: true, 
       color: new THREE.Color(0xffffff) // Full brightness
     });
     const mesh = new THREE.Mesh(planeGeo, mat);
-    mesh.userData = { c, r, isGrid: true };
+    mesh.userData = { c, r, isGrid: true, projectIndex: projIndex };
     gridGroup.add(mesh);
     gridMeshes.push(mesh);
+    gridIndex++;
   }
 }
 
@@ -113,6 +198,7 @@ let offsetX = 0;
 let offsetY = 0;
 let isProjectOpen = false;
 let projectScrollY = 0;
+let currentProjectImagesLength = 0;
 export let isDraggingGallery = false;
 
 function updateGridPositions() {
@@ -255,7 +341,7 @@ window.addEventListener('pointermove', (e) => {
   } else {
     // Scroll detail (invertido para ser scroll natural no touch)
     projectScrollY -= dy;
-    const maxScroll = projectImages.length * spacing;
+    const maxScroll = currentProjectImagesLength * spacing;
     projectScrollY = Math.max(0, Math.min(projectScrollY, maxScroll));
     detailGroup.position.y = projectScrollY;
     if (window.clickedMesh) {
@@ -281,7 +367,7 @@ window.addEventListener('wheel', (e) => {
     updateGridPositions();
   } else {
     projectScrollY += e.deltaY;
-    const maxScroll = projectImages.length * spacing;
+    const maxScroll = currentProjectImagesLength * spacing;
     projectScrollY = Math.max(0, Math.min(projectScrollY, maxScroll));
     detailGroup.position.y = projectScrollY;
     if (window.clickedMesh) {
@@ -362,18 +448,11 @@ function openProject(clickedMesh) {
       
       let yOffset = -spacing; // espaçamento entre os itens
       
-      projectImages.forEach((src, idx) => {
-        const tex = textureLoader.load(src, (loadedTex) => {
-          const imgAspect = loadedTex.image.width / loadedTex.image.height;
-          const planeAspect = 1;
-          if (imgAspect > planeAspect) {
-            loadedTex.repeat.set(planeAspect / imgAspect, 1);
-            loadedTex.offset.set((1 - planeAspect / imgAspect) / 2, 0);
-          } else {
-            loadedTex.repeat.set(1, imgAspect / planeAspect);
-            loadedTex.offset.set(0, (1 - imgAspect / planeAspect) / 2);
-          }
-        });
+      const imagesToLoad = projectsData[clickedMesh.userData.projectIndex].images;
+      currentProjectImagesLength = imagesToLoad.length;
+      
+      imagesToLoad.forEach((src, idx) => {
+        const tex = textureLoader.load(src, applyCoverAspect);
         tex.colorSpace = THREE.SRGBColorSpace;
         const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0 });
         const geo = new THREE.PlaneGeometry(itemWidth, itemHeight); // Quadradas iguais à capa

@@ -45,7 +45,7 @@ let reflector = null; // Declare here to avoid Temporal Dead Zone (TDZ)
 function updateCameraZ() {
   const aspect = window.innerWidth / window.innerHeight;
   let targetZ = cameraSettings.baseZ;
-  
+
   if (aspect < 1.0) {
     // Mobile/Portrait: move camera back to fit width + 20% extra margin
     targetZ = (cameraSettings.baseZ / aspect) * 1.2;
@@ -58,10 +58,10 @@ function updateCameraZ() {
       reflector.material.uniforms.fadeStrength.value = 0.05;
     }
   }
-  
+
   const zDiff = targetZ - cameraSettings.baseZ;
   camera.position.z = targetZ;
-  
+
   // Prevent fog from swallowing the scene by pushing it back by the same amount
   if (scene.fog) {
     scene.fog.near = fogSettings.baseNear + zDiff;
@@ -81,7 +81,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.domElement.style.touchAction = 'none'; // Prevent browser scroll when dragging canvas
 // Use opaque background matching config.bgColor to ensure soft canvas edges
-renderer.setClearColor(config.bgColor, 1); 
+renderer.setClearColor(config.bgColor, 1);
 appContainer.appendChild(renderer.domElement);
 
 // --- Gallery Postprocessing (Fisheye + Chromatic Aberration) ---
@@ -152,18 +152,18 @@ function applyHdriSaturation() {
   const saturation = config.hdriSaturation;
   const data = originalTexture.image.data;
   const stride = originalHdriData.length / (hdriWidth * hdriHeight);
-  
+
   for (let i = 0; i < originalHdriData.length; i += stride) {
     const r = originalHdriData[i];
     const g = originalHdriData[i + 1];
     const b = originalHdriData[i + 2];
     const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    data[i]     = L + saturation * (r - L);
+    data[i] = L + saturation * (r - L);
     data[i + 1] = L + saturation * (g - L);
     data[i + 2] = L + saturation * (b - L);
   }
   originalTexture.needsUpdate = true;
-  
+
   if (hdriEnvMap) hdriEnvMap.dispose();
   hdriEnvMap = pmremGenerator.fromEquirectangular(originalTexture).texture;
   if (actions.useHDRI) {
@@ -215,7 +215,7 @@ if (globalBtn) {
   // Prevent events from bubbling to the window and triggering 3D raycaster clicks
   globalBtn.addEventListener('pointerdown', e => e.stopPropagation());
   globalBtn.addEventListener('pointerup', e => e.stopPropagation());
-  
+
   globalBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (currentActionType === 'toggleFold') {
@@ -233,21 +233,21 @@ if (globalBtn) {
 
 export function setGlobalActionText(text, newActionType = null) {
   if (newActionType) currentActionType = newActionType;
-  
+
   const textEl = document.getElementById('global-action-text');
   if (!textEl || textEl.innerText === text) return;
-  
+
   textEl.classList.remove('slide-normal');
   textEl.classList.add('slide-up-out');
-  
+
   setTimeout(() => {
     textEl.innerText = text;
     textEl.classList.remove('slide-up-out');
     textEl.classList.add('slide-down-in');
-    
+
     // Força o reflow para reiniciar a animação
     void textEl.offsetWidth;
-    
+
     textEl.classList.remove('slide-down-in');
     textEl.classList.add('slide-normal');
   }, 200); // Metade do tempo da transition do CSS
@@ -268,7 +268,7 @@ window.addEventListener('exitGalleryScene', () => {
 
 // --- GUI Setup ---
 const gui = new GUI({ title: 'Configurações do Ambiente' });
-gui.hide();
+gui.show();
 
 const actions = {
   useHDRI: true,
@@ -277,23 +277,23 @@ const actions = {
       config: config, // Includes theme, physics, animation speeds
       camera: { z: camera.position.z },
       ambient: { color: ambientColorObj.color, intensity: ambientLight.intensity },
-      directional: { 
-        color: directionalColorObj.color, 
-        intensity: directionalLight.intensity, 
-        x: directionalLight.position.x, 
-        y: directionalLight.position.y, 
-        z: directionalLight.position.z 
+      directional: {
+        color: directionalColorObj.color,
+        intensity: directionalLight.intensity,
+        x: directionalLight.position.x,
+        y: directionalLight.position.y,
+        z: directionalLight.position.z
       },
       fog: { color: fogColorObj.color, near: scene.fog.near, far: scene.fog.far },
       floor: { color: floorColorObj.color }
     };
-    
+
     // Converte de numero (ex: 16777215) para hex color string (ex: #ffffff) pra facilitar leitura
     const toHex = (num) => {
       if (typeof num === 'string') return num;
       return '#' + num.toString(16).padStart(6, '0');
     };
-    
+
     settings.ambient.color = toHex(settings.ambient.color);
     settings.directional.color = toHex(settings.directional.color);
     settings.fog.color = toHex(settings.fog.color);
@@ -365,14 +365,12 @@ const applyFrontTextParams = () => {
 
 const applyFrontTextScale = () => {
   frontTextMeshes.forEach(mesh => {
-    mesh.scale.set(config.frontTextScaleX, config.frontTextScaleY, config.frontTextScaleZ);
+    mesh.scale.set(config.frontTextScale, config.frontTextScale, config.frontTextScale);
   });
 };
 
 const frontTextFolder = gui.addFolder('Visual do Texto 3D (Telas)').close();
-frontTextFolder.add(config, 'frontTextScaleX', 0.1, 3, 0.01).name('Largura').onChange(applyFrontTextScale);
-frontTextFolder.add(config, 'frontTextScaleY', 0.1, 3, 0.01).name('Altura').onChange(applyFrontTextScale);
-frontTextFolder.add(config, 'frontTextScaleZ', 0.1, 3, 0.01).name('Profundidade').onChange(applyFrontTextScale);
+frontTextFolder.add(config, 'frontTextScale', 0.1, 5, 0.05).name('Tamanho Proporcional').onChange(applyFrontTextScale);
 frontTextFolder.addColor(config, 'frontTextColor').name('Cor').onChange(applyFrontTextParams);
 frontTextFolder.addColor(config, 'frontTextEmissive').name('Luz Própria (Emissive)').onChange(applyFrontTextParams);
 frontTextFolder.add(config, 'frontTextEmissiveIntensity', 0, 2, 0.01).name('Intensidade da Luz').onChange(applyFrontTextParams);
@@ -426,14 +424,14 @@ floorFolder.add(config, 'waveSpeed', 0, 5, 0.1).name('Velocidade da Onda');
 window.addEventListener('resize', () => {
   const width = window.innerWidth;
   const height = window.innerHeight;
-  
+
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  
+
   renderer.setSize(width, height);
   galleryComposer.setSize(width, height);
   updateCameraZ();
-  
+
   // Re-render immediately on resize
   renderer.render(scene, camera);
 });
@@ -447,25 +445,27 @@ window.addEventListener('enterProjectGallery', (e) => {
     if (themeMeta) themeMeta.setAttribute('content', '#050505');
     document.body.style.backgroundColor = '#050505';
   }, 1000);
-  
+
   gsap.to(camera.position, {
     z: 1,
     duration: 1.5,
     ease: 'power3.inOut'
   });
-  
+
   const transitionLayer = document.getElementById('transition-layer');
   transitionLayer.style.display = 'block';
-  gsap.to(transitionLayer, { 
-    opacity: 1, 
-    duration: 1, 
+  gsap.to(transitionLayer, {
+    opacity: 1,
+    duration: 1,
     delay: 0.5,
     onComplete: () => {
       window.activeScene = 'gallery';
       window.dispatchEvent(new CustomEvent('enterGalleryScene'));
-      gsap.to(transitionLayer, { opacity: 0, duration: 1, onComplete: () => {
-        transitionLayer.style.display = 'none';
-      }});
+      gsap.to(transitionLayer, {
+        opacity: 0, duration: 1, onComplete: () => {
+          transitionLayer.style.display = 'none';
+        }
+      });
     }
   });
 });
@@ -476,21 +476,21 @@ window.addEventListener('exitGalleryScene', (e) => {
     if (themeMeta) themeMeta.setAttribute('content', config.bgColor);
     document.body.style.backgroundColor = config.bgColor;
   }, 1000);
-  
+
   const transitionLayer = document.getElementById('transition-layer');
   transitionLayer.style.display = 'block';
-  gsap.to(transitionLayer, { 
-    opacity: 1, 
+  gsap.to(transitionLayer, {
+    opacity: 1,
     duration: 1,
     onComplete: () => {
       window.activeScene = 'main';
-      
+
       const aspect = window.innerWidth / window.innerHeight;
       let targetZ = cameraSettings.baseZ;
       if (aspect < 1.0) {
         targetZ = (cameraSettings.baseZ / aspect) * 1.2;
       }
-      
+
       gsap.to(camera.position, {
         z: targetZ,
         duration: 1.5,
@@ -503,10 +503,12 @@ window.addEventListener('exitGalleryScene', (e) => {
           }
         }
       });
-      
-      gsap.to(transitionLayer, { opacity: 0, duration: 1, onComplete: () => {
-        transitionLayer.style.display = 'none';
-      }});
+
+      gsap.to(transitionLayer, {
+        opacity: 0, duration: 1, onComplete: () => {
+          transitionLayer.style.display = 'none';
+        }
+      });
     }
   });
 });
@@ -521,7 +523,7 @@ function animate() {
   // Update screens
   if (window.activeScene === 'main') {
     updateScreens();
-    
+
     // Animate floor water
     if (reflector && reflector.material.uniforms) {
       reflector.material.uniforms.time.value += delta;

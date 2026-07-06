@@ -3,7 +3,7 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 
 export function createFloor(scene) {
   const floorGeometry = new THREE.PlaneGeometry(50, 50);
-  
+
   // Clone the default shader to inject water distortion
   const customShader = {
     name: 'WaterReflectorShader',
@@ -58,7 +58,7 @@ uniform float fadeStrength;`
     color: 0xffffff, // White tint to blend with background
     shader: customShader
   });
-  
+
   reflector.rotation.x = -Math.PI / 2;
   reflector.position.y = -1.5; // Just below the cylinder
   scene.add(reflector);
