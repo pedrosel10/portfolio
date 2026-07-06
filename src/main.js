@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { createScreens, screensGroup, toggleFold, updateScreens, panelsDataObj, frontTextMeshes } from './screens.js';
+import { createScreens, screensGroup, toggleFold, updateScreens, panelsDataObj, frontTextMeshes, isFolded } from './screens.js';
 import { galleryScene, galleryCamera } from './gallery3d.js';
 import { createFloor } from './floor.js';
 import { initScroll } from './scroll.js';
@@ -208,8 +208,57 @@ updateCameraZ(); // Update dynamic uniforms (e.g. fadeStrength) on load
 initScroll();
 initMouse(scene, camera, screensGroup);
 
-document.getElementById('toggle-fold').addEventListener('click', () => {
-  toggleFold();
+let currentActionType = 'toggleFold';
+
+const globalBtn = document.getElementById('global-action-btn');
+if (globalBtn) {
+  globalBtn.addEventListener('click', () => {
+    if (currentActionType === 'toggleFold') {
+      toggleFold();
+      // Predict next state and update text immediately for snappier UI
+      const willBeFolded = !isFolded; // Since we just triggered a toggle
+      setGlobalActionText(willBeFolded ? 'Abrir' : 'Fechar');
+    } else if (currentActionType === 'exitGallery') {
+      window.dispatchEvent(new CustomEvent('exitGalleryScene'));
+    } else if (currentActionType === 'exitProject') {
+      window.dispatchEvent(new CustomEvent('exitProjectGallery'));
+    }
+  });
+}
+
+export function setGlobalActionText(text, newActionType = null) {
+  if (newActionType) currentActionType = newActionType;
+  
+  const textEl = document.getElementById('global-action-text');
+  if (!textEl || textEl.innerText === text) return;
+  
+  textEl.classList.remove('slide-normal');
+  textEl.classList.add('slide-up-out');
+  
+  setTimeout(() => {
+    textEl.innerText = text;
+    textEl.classList.remove('slide-up-out');
+    textEl.classList.add('slide-down-in');
+    
+    // Força o reflow para reiniciar a animação
+    void textEl.offsetWidth;
+    
+    textEl.classList.remove('slide-down-in');
+    textEl.classList.add('slide-normal');
+  }, 200); // Metade do tempo da transition do CSS
+}
+
+window.addEventListener('enterProjectGallery', () => {
+  setGlobalActionText('Voltar ao Grid', 'exitProject');
+});
+window.addEventListener('exitProjectGallery', () => {
+  setGlobalActionText('Voltar', 'exitGallery');
+});
+window.addEventListener('enterGalleryScene', () => {
+  setGlobalActionText('Voltar', 'exitGallery');
+});
+window.addEventListener('exitGalleryScene', () => {
+  setGlobalActionText(isFolded ? 'Abrir' : 'Fechar', 'toggleFold');
 });
 
 // --- GUI Setup ---

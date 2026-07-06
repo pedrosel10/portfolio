@@ -156,30 +156,10 @@ export const detailGroup = new THREE.Group();
 galleryScene.add(detailGroup);
 let detailMeshes = [];
 
-// Create close button dynamically
-const closeBtn = document.createElement('button');
-closeBtn.innerHTML = '&times; Voltar';
-closeBtn.style.cssText = 'display:none; position:fixed; top:20px; right:20px; padding:10px 20px; z-index:1000; background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.3); border-radius:30px; cursor:pointer; font-family:sans-serif; transition:0.3s;';
-closeBtn.onmouseenter = () => closeBtn.style.background = 'rgba(255,255,255,0.3)';
-closeBtn.onmouseleave = () => closeBtn.style.background = 'rgba(255,255,255,0.1)';
-document.body.appendChild(closeBtn);
-
-closeBtn.addEventListener('pointerdown', e => e.stopPropagation());
-closeBtn.addEventListener('pointerup', e => e.stopPropagation());
-closeBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (!isProjectOpen) {
-    // Return to main scene
-    window.dispatchEvent(new CustomEvent('exitGalleryScene'));
-    return;
-  }
+// The global action button handles closing the gallery or project
+window.addEventListener('exitProjectGallery', () => {
+  if (!isProjectOpen) return;
   
-  // Close project detail
-  gsap.to(closeBtn, { opacity: 0, duration: 0.5, onComplete: () => {
-    closeBtn.innerHTML = '&times; Voltar'; // Reset text for main gallery close
-    gsap.to(closeBtn, { opacity: 1, duration: 0.5 });
-  }});
-
   // Reset color of clicked mesh instantly
   if (window.clickedMesh) {
     window.clickedMesh.material.color.setRGB(1, 1, 1);
@@ -231,6 +211,9 @@ closeBtn.addEventListener('click', (e) => {
       detailMeshes = [];
       projectScrollY = 0;
       isProjectOpen = false;
+      
+      // Tell main to update the global button back to gallery close
+      window.dispatchEvent(new CustomEvent('exitProjectGalleryCompleted'));
     }
   });
 });
@@ -336,11 +319,8 @@ function openProject(clickedMesh) {
   isProjectOpen = true;
   window.clickedMesh = clickedMesh;
   
-  // Change button text
-  gsap.to(closeBtn, { opacity: 0, duration: 0.5, onComplete: () => {
-    closeBtn.innerHTML = '&times; Voltar ao Grid';
-    gsap.to(closeBtn, { opacity: 1, duration: 0.5 });
-  }});
+  // Tell main to update the global button to close project mode
+  window.dispatchEvent(new CustomEvent('enterProjectGallery'));
 
   // Fade out other meshes, brighten clicked
   gridMeshes.forEach(m => {
@@ -411,9 +391,7 @@ function openProject(clickedMesh) {
 
 // Show/Hide close button based on scene
 window.addEventListener('enterGalleryScene', () => {
-  closeBtn.style.display = 'block';
-  gsap.fromTo(closeBtn, { opacity: 0 }, { opacity: 1, duration: 1 });
 });
 window.addEventListener('exitGalleryScene', () => {
-  gsap.to(closeBtn, { opacity: 0, duration: 0.5, onComplete: () => closeBtn.style.display = 'none' });
+  // Hiding is handled globally now
 });
