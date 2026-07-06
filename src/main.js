@@ -268,7 +268,7 @@ window.addEventListener('exitGalleryScene', () => {
 
 // --- GUI Setup ---
 const gui = new GUI({ title: 'Configurações do Ambiente' });
-gui.show();
+gui.hide();
 
 const actions = {
   useHDRI: true,
