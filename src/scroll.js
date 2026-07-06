@@ -9,6 +9,7 @@ export function initScroll() {
   const anglePerPanel = (120 * Math.PI) / 180; // 120 degrees
   
   window.addEventListener('wheel', (e) => {
+    if (window.activeScene && window.activeScene !== 'main') return;
     if (isTransitioning) return;
     if (isFolded) {
       // Cylinder mode
@@ -78,6 +79,7 @@ export function initScroll() {
   let lastDragTime = 0;
 
   window.addEventListener('pointerdown', (e) => {
+    if (window.activeScene && window.activeScene !== 'main') return;
     if (isTransitioning) return;
     // Only capture if on the canvas (app container) to prevent interfering with UI
     if (e.target.tagName !== 'CANVAS') return;
@@ -88,6 +90,10 @@ export function initScroll() {
   });
 
   window.addEventListener('pointermove', (e) => {
+    if (window.activeScene && window.activeScene !== 'main') {
+      isDragging = false;
+      return;
+    }
     if (isTransitioning) {
       isDragging = false;
       return;
@@ -129,6 +135,7 @@ export function initScroll() {
   });
 
   const endDrag = () => {
+    if (window.activeScene && window.activeScene !== 'main') return;
     if (!isDragging) return;
     isDragging = false;
     
