@@ -212,7 +212,12 @@ let currentActionType = 'toggleFold';
 
 const globalBtn = document.getElementById('global-action-btn');
 if (globalBtn) {
-  globalBtn.addEventListener('click', () => {
+  // Prevent events from bubbling to the window and triggering 3D raycaster clicks
+  globalBtn.addEventListener('pointerdown', e => e.stopPropagation());
+  globalBtn.addEventListener('pointerup', e => e.stopPropagation());
+  
+  globalBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     if (currentActionType === 'toggleFold') {
       toggleFold();
       // Predict next state and update text immediately for snappier UI
