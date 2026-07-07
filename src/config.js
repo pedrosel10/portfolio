@@ -39,7 +39,7 @@ export const config = {
   frontTextIor: 3,
   frontTextThickness: 2,
   frontTextOffsetDesktop: 0.4,
-  frontTextOffsetMobile: 0.15,
+  frontTextOffsetMobile: 0.075,
   
   // Water Reflection
   waveStrength: 0.005,
