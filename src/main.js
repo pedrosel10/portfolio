@@ -574,6 +574,7 @@ window.addEventListener('enterProjectGallery', (e) => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', '#050505');
     document.body.style.background = '#050505';
+    document.documentElement.style.backgroundColor = '#050505';
   }, 1000);
 
   gsap.to(camera.position, {
@@ -605,6 +606,7 @@ window.addEventListener('exitGalleryScene', (e) => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', config.bgColor);
     document.body.style.background = 'linear-gradient(to top, ' + config.bgColor + ' 20%, #7d4422 100%)';
+    document.documentElement.style.backgroundColor = config.bgColor;
   }, 1000);
 
   const transitionLayer = document.getElementById('transition-layer');
