@@ -1,6 +1,6 @@
 export const config = {
   // Theme
-  bgColor: "#ffffff",
+  bgColor: "#B16B3E",
   hdriSaturation: 1,
 
   // Animation
@@ -38,8 +38,22 @@ export const config = {
   frontTextRoughness: 0.62,
   frontTextIor: 3,
   frontTextThickness: 2,
+  frontTextOffsetDesktop: 0.4,
+  frontTextOffsetMobile: 0.15,
   
   // Water Reflection
   waveStrength: 0.005,
-  waveSpeed: 0.9
+  waveSpeed: 0.9,
+  fadeStrengthDesktop: 0.2,
+  fadeStrengthMobile: 0.45,
+  fadeContrastDesktop: 1.1,
+  fadeContrastMobile: 5.0,
+  
+  // Intro Animation
+  introCamYDesktop: 19.5,
+  introCamZDesktop: -3,
+  introCamRotXDesktop: -90,
+  introCamYMobile: 30,
+  introCamZMobile: -2,
+  introCamRotXMobile: -90
 };

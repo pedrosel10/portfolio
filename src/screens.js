@@ -189,8 +189,8 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
     
     const textMesh = new THREE.Mesh(textGeo, textMat);
     textMesh.scale.set(config.frontTextScale, config.frontTextScale, config.frontTextScale);
-    // Position it slightly in front of the screen
-    textMesh.position.set(0, 0, 0.4); 
+    // Position it slightly in front of the screen (will be overridden by updateCameraZ)
+    textMesh.position.set(0, 0, config.frontTextOffsetDesktop); 
     
     // Optional: make it bend using same logic, but for now simple translation is fine
     // Or we bend it using position attributes:
@@ -423,4 +423,10 @@ export function updateScreens() {
       }
     }
   }
+}
+
+export function updateFrontTextOffset(offset) {
+  frontTextMeshes.forEach(mesh => {
+    mesh.position.z = offset;
+  });
 }

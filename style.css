@@ -1,3 +1,10 @@
+@font-face {
+  font-family: 'CooperLtBT';
+  src: url('./CooperLtBT-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -7,7 +14,7 @@
 body {
   overflow: hidden;
   /* Hide scrollbars as we will use wheel events manually */
-  background-color: #ffffff;
+  background: linear-gradient(to top, #B16B3E 20%, #7d4422 100%);
   font-family: 'Playfair Display', serif;
   user-select: none;
 }
@@ -49,4 +56,42 @@ canvas {
   100% {
     transform: rotate(360deg);
   }
+}
+
+#top-logo {
+  position: fixed;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'CooperLtBT', serif;
+  font-size: 14px;
+  letter-spacing: 8px;
+  color: #111;
+  z-index: 10000;
+  pointer-events: none;
+  display: flex;
+  gap: 4px;
+}
+
+.slot-column {
+  overflow: hidden;
+  height: 18px; /* Altura exata da fonte/linha */
+  line-height: 18px;
+  display: inline-block;
+  position: relative;
+}
+
+.slot-strip {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* gsap vai animar o transform: translateY() */
+}
+
+.slot-char {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  line-height: 18px;
 }

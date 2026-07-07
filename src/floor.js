@@ -17,15 +17,18 @@ export function createFloor(scene) {
   customShader.uniforms.waveStrength = { value: 0.015 };
   customShader.uniforms.waveSpeed = { value: 1.5 };
   customShader.uniforms.fadeStrength = { value: 0.05 };
+  customShader.uniforms.fadeContrast = { value: 1.0 };
 
   // Inject time uniform into fragment shader
   customShader.fragmentShader = customShader.fragmentShader.replace(
     'uniform sampler2D tDiffuse;',
     `uniform sampler2D tDiffuse;
+varying vec2 vLocalUv;
 uniform float time;
 uniform float waveStrength;
 uniform float waveSpeed;
-uniform float fadeStrength;`
+uniform float fadeStrength;
+uniform float fadeContrast;`
   );
 
   // Replace texture lookup with distorted UVs
@@ -43,12 +46,39 @@ uniform float fadeStrength;`
     
     vec4 base = texture2D( tDiffuse, distortedUv );
     
-    // Fade out reflection towards the bottom of the screen
-    // distortedUv.y goes from 0.0 (bottom) to 1.0 (top)
-    // fadeStrength is dynamically controlled: stronger on mobile, weaker on desktop
+    // Calculate fade distance and apply contrast
     float fade = smoothstep(0.0, fadeStrength, distortedUv.y);
-    base.rgb = mix(color, base.rgb, fade);
+    fade = pow(fade, fadeContrast);
     `
+  );
+
+  // Apply the fade AFTER the color overlay to avoid darkening the edge
+  // And also fade out the edges of the Plane Geometry using vLocalUv
+  customShader.fragmentShader = customShader.fragmentShader.replace(
+    'gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );',
+    `
+    // Removendo o blendOverlay para que a cor original do fundo não seja distorcida
+    vec3 tintedReflection = base.rgb;
+    vec3 finalReflection = mix(color, tintedReflection, fade);
+    
+    // Smooth out all outer edges of the 50x50 plane so it blends perfectly into the background
+    float edgeDistX = abs(vLocalUv.x - 0.5) * 2.0;
+    float edgeDistY = abs(vLocalUv.y - 0.5) * 2.0;
+    float edgeDist = max(edgeDistX, edgeDistY);
+    // Começa a suavizar desde o centro (0.2) até a borda (1.0) para um degradê 200% mais longo
+    float edgeFade = smoothstep(0.2, 1.0, edgeDist);
+    
+    gl_FragColor = vec4( mix(finalReflection, color, edgeFade), 1.0 );
+    `
+  );
+
+  // Pass local UV from vertex shader
+  customShader.vertexShader = customShader.vertexShader.replace(
+    'varying vec4 vUv;',
+    'varying vec4 vUv;\nvarying vec2 vLocalUv;'
+  ).replace(
+    'void main() {',
+    'void main() {\n\tvLocalUv = uv;'
   );
 
   const reflector = new Reflector(floorGeometry, {

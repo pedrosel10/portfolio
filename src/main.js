@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { createScreens, screensGroup, toggleFold, updateScreens, panelsDataObj, frontTextMeshes, isFolded } from './screens.js';
+import { createScreens, screensGroup, toggleFold, updateScreens, panelsDataObj, frontTextMeshes, isFolded, updateFrontTextOffset } from './screens.js';
 import { galleryScene, galleryCamera } from './gallery3d.js';
 import { createFloor } from './floor.js';
 import { initScroll } from './scroll.js';
@@ -15,13 +15,93 @@ import gsap from 'gsap';
 
 window.activeScene = 'main';
 
+let introComplete = false;
+let isIntroLocked = false;
+const introState = { fogFade: 1 };
+
+function setCameraToIntroState() {
+  introComplete = false;
+  introState.fogFade = 0;
+  const aspect = window.innerWidth / window.innerHeight;
+  camera.position.set(
+    0, 
+    aspect < 1.0 ? config.introCamYMobile : config.introCamYDesktop, 
+    aspect < 1.0 ? config.introCamZMobile : config.introCamZDesktop
+  );
+  
+  const rotXDeg = aspect < 1.0 ? config.introCamRotXMobile : config.introCamRotXDesktop;
+  camera.rotation.set(
+    THREE.MathUtils.degToRad(rotXDeg),
+    0, 
+    0
+  );
+  if (scene.fog) {
+    const zDiff = camera.position.z - cameraSettings.baseZ;
+    const extraDist = (1 - introState.fogFade) * 100;
+    scene.fog.near = fogSettings.baseNear + zDiff + extraDist;
+    scene.fog.far = fogSettings.baseFar + zDiff + extraDist;
+  }
+}
+
+const onIntroSettingChange = () => {
+  if (!introComplete || isIntroLocked) {
+    setCameraToIntroState();
+  }
+};
+
+function playIntroAnimation() {
+  isIntroLocked = false;
+  introComplete = false;
+  introState.fogFade = 0;
+  setCameraToIntroState();
+
+  const aspect = window.innerWidth / window.innerHeight;
+  let targetZ = cameraSettings.baseZ;
+  if (aspect < 1.0) {
+    targetZ = (cameraSettings.baseZ / aspect) * 1.2;
+  }
+  
+  gsap.to(introState, {
+    fogFade: 1,
+    duration: 2.5,
+    ease: 'power3.inOut'
+  });
+  
+  gsap.to(camera.position, {
+    y: 0,
+    z: targetZ,
+    duration: 2.5,
+    ease: 'power3.inOut',
+    onUpdate: () => {
+      if (scene.fog) {
+        const zDiff = camera.position.z - cameraSettings.baseZ;
+        const extraDist = (1 - introState.fogFade) * 100;
+        scene.fog.near = fogSettings.baseNear + zDiff + extraDist;
+        scene.fog.far = fogSettings.baseFar + zDiff + extraDist;
+      }
+    }
+  });
+  
+  gsap.to(camera.rotation, {
+    x: 0,
+    duration: 2.5,
+    ease: 'power3.inOut',
+    onComplete: () => {
+      introComplete = true;
+    }
+  });
+}
+
 THREE.DefaultLoadingManager.onLoad = function () {
   const loadingScreen = document.getElementById('loading-screen');
   if (loadingScreen) {
     loadingScreen.style.opacity = '0';
     setTimeout(() => {
       loadingScreen.style.display = 'none';
+      playIntroAnimation();
     }, 800);
+  } else {
+    playIntroAnimation();
   }
 };
 
@@ -37,8 +117,8 @@ const fogSettings = { baseNear: 7.1, baseFar: 15.1 };
 
 // Background is transparent to show the HTML text behind it
 // Fog can help fade the reflection
-scene.fog = new THREE.Fog('#ffffff', fogSettings.baseNear, fogSettings.baseFar);
-const fogColorObj = { color: '#ffffff' };
+scene.fog = new THREE.Fog('#B16B3E', fogSettings.baseNear, fogSettings.baseFar);
+const fogColorObj = { color: '#B16B3E' };
 
 let reflector = null; // Declare here to avoid Temporal Dead Zone (TDZ)
 
@@ -50,25 +130,39 @@ function updateCameraZ() {
     // Mobile/Portrait: move camera back to fit width + 20% extra margin
     targetZ = (cameraSettings.baseZ / aspect) * 1.2;
     if (reflector && reflector.material.uniforms.fadeStrength) {
-      reflector.material.uniforms.fadeStrength.value = 0.5;
+      reflector.material.uniforms.fadeStrength.value = config.fadeStrengthMobile;
+      reflector.material.uniforms.fadeContrast.value = config.fadeContrastMobile;
     }
+    updateFrontTextOffset(config.frontTextOffsetMobile);
   } else {
     // Landscape
     if (reflector && reflector.material.uniforms.fadeStrength) {
-      reflector.material.uniforms.fadeStrength.value = 0.05;
+      reflector.material.uniforms.fadeStrength.value = config.fadeStrengthDesktop;
+      reflector.material.uniforms.fadeContrast.value = config.fadeContrastDesktop;
     }
+    updateFrontTextOffset(config.frontTextOffsetDesktop);
   }
 
   const zDiff = targetZ - cameraSettings.baseZ;
-  camera.position.z = targetZ;
+  
+  // Apenas atualiza o Z direto se a intro ja terminou (ex: resize da janela)
+  if (introComplete) {
+    camera.position.z = targetZ;
+  }
 
   // Prevent fog from swallowing the scene by pushing it back by the same amount
   if (scene.fog) {
-    scene.fog.near = fogSettings.baseNear + zDiff;
-    scene.fog.far = fogSettings.baseFar + zDiff;
+    const zDiff = camera.position.z - cameraSettings.baseZ;
+    const extraDist = (1 - introState.fogFade) * 100;
+    scene.fog.near = fogSettings.baseNear + zDiff + extraDist;
+    scene.fog.far = fogSettings.baseFar + zDiff + extraDist;
   }
 }
 updateCameraZ(); // Initial call
+
+// Set initial intro position before first render
+setCameraToIntroState();
+
 scene.add(camera);
 
 // --- Renderer Setup ---
@@ -201,7 +295,8 @@ createScreens(scene);
 
 // Reflective Floor
 reflector = createFloor(scene);
-const floorColorObj = { color: 0xffffff };
+const floorColorObj = { color: 0xB16B3E };
+reflector.material.uniforms.color.value.setHex(floorColorObj.color);
 updateCameraZ(); // Update dynamic uniforms (e.g. fadeStrength) on load
 
 // --- Interactions ---
@@ -261,14 +356,26 @@ window.addEventListener('exitProjectGallery', () => {
 });
 window.addEventListener('enterGalleryScene', () => {
   setGlobalActionText('Voltar', 'exitGallery');
+  const logoEl = document.getElementById('top-logo');
+  if (logoEl) gsap.to(logoEl, { opacity: 0, duration: 0.8 });
 });
 window.addEventListener('exitGalleryScene', () => {
   setGlobalActionText(isFolded ? 'Abrir' : 'Fechar', 'toggleFold');
+  const logoEl = document.getElementById('top-logo');
+  if (logoEl) gsap.to(logoEl, { opacity: 1, duration: 0.8, delay: 0.5 });
 });
 
 // --- GUI Setup ---
 const gui = new GUI({ title: 'Configurações do Ambiente' });
 gui.hide();
+
+// Prevent clicks on the GUI from triggering 3D raycaster
+if (gui.domElement) {
+  gui.domElement.addEventListener('pointerdown', e => e.stopPropagation());
+  gui.domElement.addEventListener('pointerup', e => e.stopPropagation());
+  gui.domElement.addEventListener('click', e => e.stopPropagation());
+  gui.domElement.addEventListener('pointermove', e => e.stopPropagation());
+}
 
 const actions = {
   useHDRI: true,
@@ -311,7 +418,7 @@ gui.add(actions, 'copySettings').name('💾 Copiar Configurações');
 // Theme settings
 const themeFolder = gui.addFolder('Cores do Site').close();
 themeFolder.addColor(config, 'bgColor').name('Fundo do Site').onChange(c => {
-  document.body.style.backgroundColor = c;
+  document.body.style.background = 'linear-gradient(to top, ' + c + ' 20%, #7d4422 100%)';
   renderer.setClearColor(c, 1);
 });
 
@@ -371,6 +478,8 @@ const applyFrontTextScale = () => {
 
 const frontTextFolder = gui.addFolder('Visual do Texto 3D (Telas)').close();
 frontTextFolder.add(config, 'frontTextScale', 0.1, 5, 0.05).name('Tamanho Proporcional').onChange(applyFrontTextScale);
+frontTextFolder.add(config, 'frontTextOffsetDesktop', 0.0, 2.0, 0.01).name('Distância da Face (Desk)').onChange(updateCameraZ);
+frontTextFolder.add(config, 'frontTextOffsetMobile', 0.0, 2.0, 0.01).name('Distância da Face (Mob)').onChange(updateCameraZ);
 frontTextFolder.addColor(config, 'frontTextColor').name('Cor').onChange(applyFrontTextParams);
 frontTextFolder.addColor(config, 'frontTextEmissive').name('Luz Própria (Emissive)').onChange(applyFrontTextParams);
 frontTextFolder.add(config, 'frontTextEmissiveIntensity', 0, 2, 0.01).name('Intensidade da Luz').onChange(applyFrontTextParams);
@@ -391,6 +500,23 @@ shatterFolder.add(config, 'shatterDuration', 0.1, 5.0, 0.1).name('Duração da Q
 // Camera settings
 const cameraFolder = gui.addFolder('Camera').close();
 cameraFolder.add(cameraSettings, 'baseZ', 2, 20, 0.1).name('Zoom (Z)').onChange(updateCameraZ);
+
+cameraFolder.add(config, 'introCamYDesktop', 0, 50, 0.5).name('Intro Y (Desk)').onChange(onIntroSettingChange);
+cameraFolder.add(config, 'introCamZDesktop', -20, 50, 0.5).name('Intro Z (Desk)').onChange(onIntroSettingChange);
+cameraFolder.add(config, 'introCamRotXDesktop', -180, 180, 1).name('Intro RotX (Desk)').onChange(onIntroSettingChange);
+
+cameraFolder.add(config, 'introCamYMobile', 0, 50, 0.5).name('Intro Y (Mob)').onChange(onIntroSettingChange);
+cameraFolder.add(config, 'introCamZMobile', -20, 50, 0.5).name('Intro Z (Mob)').onChange(onIntroSettingChange);
+cameraFolder.add(config, 'introCamRotXMobile', -180, 180, 1).name('Intro RotX (Mob)').onChange(onIntroSettingChange);
+
+cameraFolder.add({ lock: () => {
+  isIntroLocked = true;
+  setCameraToIntroState();
+} }, 'lock').name('🔒 Travar na Intro (Ajustar)');
+
+cameraFolder.add({ play: () => {
+  playIntroAnimation();
+} }, 'play').name('▶️ Testar Animação');
 
 // Lighting settings
 const lightFolder = gui.addFolder('Luzes').close();
@@ -419,6 +545,10 @@ const floorFolder = gui.addFolder('Piso / Reflexo (Água)').close();
 floorFolder.addColor(floorColorObj, 'color').name('Cor do Reflexo').onChange(c => reflector.material.uniforms.color.value.setHex(c));
 floorFolder.add(config, 'waveStrength', 0, 0.1, 0.001).name('Força da Onda');
 floorFolder.add(config, 'waveSpeed', 0, 5, 0.1).name('Velocidade da Onda');
+floorFolder.add(config, 'fadeStrengthDesktop', 0, 10, 0.01).name('Fade (Desktop)').onChange(updateCameraZ);
+floorFolder.add(config, 'fadeContrastDesktop', 0.1, 5, 0.01).name('Contraste (Desktop)').onChange(updateCameraZ);
+floorFolder.add(config, 'fadeStrengthMobile', 0, 10, 0.01).name('Fade (Mobile)').onChange(updateCameraZ);
+floorFolder.add(config, 'fadeContrastMobile', 0.1, 5, 0.01).name('Contraste (Mobile)').onChange(updateCameraZ);
 
 // --- Resize Handler ---
 window.addEventListener('resize', () => {
@@ -443,7 +573,7 @@ window.addEventListener('enterProjectGallery', (e) => {
   setTimeout(() => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', '#050505');
-    document.body.style.backgroundColor = '#050505';
+    document.body.style.background = '#050505';
   }, 1000);
 
   gsap.to(camera.position, {
@@ -474,7 +604,7 @@ window.addEventListener('exitGalleryScene', (e) => {
   setTimeout(() => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', config.bgColor);
-    document.body.style.backgroundColor = config.bgColor;
+    document.body.style.background = 'linear-gradient(to top, ' + config.bgColor + ' 20%, #7d4422 100%)';
   }, 1000);
 
   const transitionLayer = document.getElementById('transition-layer');
@@ -540,5 +670,71 @@ function animate() {
 }
 
 animate();
+
+// --- Top Logo Slot Machine Effect ---
+const logoEl = document.getElementById('top-logo');
+if (logoEl) {
+  const word = 'PORTFOLIO';
+  const letters = word.split('');
+  logoEl.innerHTML = '';
+  
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
+  const strips = [];
+
+  letters.forEach((letter) => {
+    const col = document.createElement('div');
+    col.className = 'slot-column';
+    
+    // Measure exact width of the original letter to prevent layout shifts
+    const measure = document.createElement('span');
+    measure.style.visibility = 'hidden';
+    measure.style.position = 'absolute';
+    measure.style.whiteSpace = 'nowrap';
+    measure.style.fontFamily = "'CooperLtBT', serif";
+    measure.style.fontSize = '14px';
+    measure.style.letterSpacing = '8px';
+    measure.innerText = letter;
+    document.body.appendChild(measure);
+    // Use getBoundingClientRect for sub-pixel accuracy, or offsetWidth
+    const width = measure.getBoundingClientRect().width;
+    document.body.removeChild(measure);
+    
+    col.style.width = width + 'px';
+    
+    const strip = document.createElement('div');
+    strip.className = 'slot-strip';
+    
+    let html = `<div class="slot-char">${letter}</div>`;
+    for(let i=0; i<15; i++) {
+      html += `<div class="slot-char">${chars[Math.floor(Math.random() * chars.length)]}</div>`;
+    }
+    html += `<div class="slot-char">${letter}</div>`;
+    
+    strip.innerHTML = html;
+    col.appendChild(strip);
+    logoEl.appendChild(col);
+    strips.push(strip);
+  });
+  
+  setInterval(() => {
+    strips.forEach((strip, i) => {
+      const children = strip.children;
+      for(let j=1; j<children.length-1; j++) {
+        children[j].innerText = chars[Math.floor(Math.random() * chars.length)];
+      }
+      
+      gsap.set(strip, { y: 0 });
+      
+      const targetY = - (children.length - 1) * 18;
+      
+      gsap.to(strip, {
+        y: targetY,
+        duration: 1.5 + Math.random() * 1.0, 
+        ease: 'power3.inOut',
+        delay: i * 0.05 
+      });
+    });
+  }, 5000); 
+}
 
 export { scene, camera, renderer };
