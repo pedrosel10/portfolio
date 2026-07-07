@@ -18,9 +18,14 @@
         gap: 40px !important;
       }
 
-      #portfolio-view img {
+      #portfolio-view img,
+      #portfolio-view .placeholder-project {
         max-width: 60% !important;
         border-radius: 8px !important;
+      }
+
+      .placeholder-project {
+        font-size: 16px !important;
       }
 
       #toggle-fold {
@@ -88,6 +93,23 @@
       transform: translateY(0);
       opacity: 1;
     }
+
+    .placeholder-project {
+      max-width: 60%;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background-color: #111111;
+      border: 1px dashed #333;
+      border-radius: 15px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'CooperLtBT', serif;
+      font-size: 24px;
+      color: #444;
+      letter-spacing: 4px;
+    }
   </style>
 </head>
 
@@ -116,14 +138,12 @@
     style="display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; overflow-y: auto; background: transparent; opacity: 0; pointer-events: none;">
     <div
       style="display: flex; flex-direction: column; align-items: center; padding: 100px 0; gap: 80px; max-width: 1200px; margin: 0 auto;">
-      <img src="./12802.webp"
-        style="max-width: 60%; width: 100%; object-fit: cover; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);" />
-      <img src="./1644.webp"
-        style="max-width: 60%; width: 100%; object-fit: cover; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);" />
-      <img src="./29038.webp"
-        style="max-width: 60%; width: 100%; object-fit: cover; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);" />
-      <img src="./12802.webp"
-        style="max-width: 60%; width: 100%; object-fit: cover; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);" />
+      <div class="placeholder-project">EM BREVE</div>
+      <div class="placeholder-project">EM BREVE</div>
+      <div class="placeholder-project">EM BREVE</div>
+      <div class="placeholder-project">EM BREVE</div>
+      <div class="placeholder-project">EM BREVE</div>
+      <div class="placeholder-project">EM BREVE</div>
     </div>
   </div>
   <script type="module" src="/src/main.js"></script>

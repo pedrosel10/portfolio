@@ -162,34 +162,66 @@ galleryScene.add(gridGroup);
 const gridMeshes = [];
 const planeGeo = new THREE.PlaneGeometry(itemWidth, itemHeight);
 
+function createPlaceholderTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  
+  ctx.fillStyle = '#1c1c1c';
+  ctx.fillRect(0, 0, 1024, 1024);
+  
+  ctx.strokeStyle = '#333333';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(20, 20, 984, 984);
+  
+  ctx.fillStyle = '#555555';
+  ctx.font = '80px "CooperLtBT", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('EM BREVE', 512, 512);
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+const placeholderTex = createPlaceholderTexture();
+
 let gridIndex = 0;
-const projectAppearanceCount = new Array(projectsData.length).fill(0);
 
 for (let r = 0; r < rows; r++) {
   for (let c = 0; c < cols; c++) {
-    const projIndex = gridIndex % projectsData.length;
-    const pData = projectsData[projIndex];
     
-    const count = projectAppearanceCount[projIndex];
-    projectAppearanceCount[projIndex]++;
-    
-    let coverSrc = pData.cover;
-    if (count > 0) {
-      coverSrc = pData.images[(count - 1) % pData.images.length];
+    // Mostra os 4 primeiros projetos reais (índices 0 a 3). O resto vira EM BREVE.
+    if (gridIndex < 4) {
+      const projIndex = gridIndex % projectsData.length;
+      const pData = projectsData[projIndex];
+      
+      const tex = textureLoader.load(pData.cover, applyCoverAspect);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      
+      const mat = new THREE.MeshBasicMaterial({ 
+        map: tex, 
+        transparent: true, 
+        color: new THREE.Color(0xffffff) 
+      });
+      const mesh = new THREE.Mesh(planeGeo, mat);
+      mesh.userData = { c, r, isGrid: true, projectIndex: projIndex, isPlaceholder: false };
+      gridGroup.add(mesh);
+      gridMeshes.push(mesh);
+    } else {
+      const mat = new THREE.MeshBasicMaterial({ 
+        map: placeholderTex, 
+        transparent: true, 
+        color: new THREE.Color(0xffffff) 
+      });
+      const mesh = new THREE.Mesh(planeGeo, mat);
+      mesh.userData = { c, r, isGrid: true, isPlaceholder: true };
+      gridGroup.add(mesh);
+      gridMeshes.push(mesh);
     }
     
-    const tex = textureLoader.load(coverSrc, applyCoverAspect);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    
-    const mat = new THREE.MeshBasicMaterial({ 
-      map: tex, 
-      transparent: true, 
-      color: new THREE.Color(0xffffff) // Full brightness
-    });
-    const mesh = new THREE.Mesh(planeGeo, mat);
-    mesh.userData = { c, r, isGrid: true, projectIndex: projIndex };
-    gridGroup.add(mesh);
-    gridMeshes.push(mesh);
     gridIndex++;
   }
 }
@@ -394,7 +426,10 @@ window.addEventListener('pointerup', (e) => {
     raycaster.setFromCamera(mouse, galleryCamera);
     const intersects = raycaster.intersectObjects(gridMeshes);
     if (intersects.length > 0) {
-      openProject(intersects[0].object);
+      const clicked = intersects[0].object;
+      if (!clicked.userData.isPlaceholder) {
+        openProject(clicked);
+      }
     }
   }
   
