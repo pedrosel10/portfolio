@@ -58,6 +58,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      opacity: 0;
     }
 
     .glass-btn:active {
@@ -115,7 +116,7 @@
 
 <body>
   <div id="loading-screen"
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to top, #B16B3E 20%, #7d4422 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease;">
+    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #B16B3E; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease;">
     <div class="loader"></div>
     <p
       style="font-family: 'Playfair Display', serif; margin-top: 24px; font-size: 14px; letter-spacing: 4px; color: #ffffff;">
@@ -146,6 +147,7 @@
       <div class="placeholder-project">EM BREVE</div>
     </div>
   </div>
+  <div id="tv-noise"><div class="tv-static"></div></div>
   <script type="module" src="/src/main.js"></script>
 </body>
 

@@ -88,6 +88,24 @@ function playIntroAnimation() {
     ease: 'power3.inOut',
     onComplete: () => {
       introComplete = true;
+      if (reflector) {
+        gsap.to(reflector.material.uniforms.globalOpacity, {
+          value: 1.0,
+          duration: 0.8,
+          ease: 'power2.inOut'
+        });
+      }
+      frontTextMeshes.forEach(mesh => {
+        gsap.to(mesh.material, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
+      });
+      const logoEl = document.getElementById('top-logo');
+      if (logoEl) {
+        gsap.to(logoEl, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
+      }
+      const btnEl = document.getElementById('global-action-btn');
+      if (btnEl) {
+        gsap.to(btnEl, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
+      }
     }
   });
 }
@@ -605,7 +623,7 @@ window.addEventListener('exitGalleryScene', (e) => {
   setTimeout(() => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', config.bgColor);
-    document.body.style.background = 'linear-gradient(to top, ' + config.bgColor + ' 20%, #7d4422 100%)';
+    document.body.style.background = config.bgColor;
     document.documentElement.style.backgroundColor = config.bgColor;
   }, 1000);
 

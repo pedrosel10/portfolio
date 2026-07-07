@@ -18,6 +18,7 @@ export function createFloor(scene) {
   customShader.uniforms.waveSpeed = { value: 1.5 };
   customShader.uniforms.fadeStrength = { value: 0.05 };
   customShader.uniforms.fadeContrast = { value: 1.0 };
+  customShader.uniforms.globalOpacity = { value: 0.0 };
 
   // Inject time uniform into fragment shader
   customShader.fragmentShader = customShader.fragmentShader.replace(
@@ -28,7 +29,8 @@ uniform float time;
 uniform float waveStrength;
 uniform float waveSpeed;
 uniform float fadeStrength;
-uniform float fadeContrast;`
+uniform float fadeContrast;
+uniform float globalOpacity;`
   );
 
   // Replace texture lookup with distorted UVs
@@ -59,7 +61,8 @@ uniform float fadeContrast;`
     `
     // Removendo o blendOverlay para que a cor original do fundo não seja distorcida
     vec3 tintedReflection = base.rgb;
-    vec3 finalReflection = mix(color, tintedReflection, fade);
+    vec3 opReflection = mix(color, tintedReflection, globalOpacity);
+    vec3 finalReflection = mix(color, opReflection, fade);
     
     // Smooth out all outer edges of the 50x50 plane so it blends perfectly into the background
     float edgeDistX = abs(vLocalUv.x - 0.5) * 2.0;

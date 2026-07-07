@@ -33,7 +33,7 @@ export const config = {
   frontTextEmissive: "#ffffff",
   frontTextEmissiveIntensity: 0,
   frontTextTransmission: 1,
-  frontTextOpacity: 1,
+  frontTextOpacity: 0,
   frontTextMetalness: 0.64,
   frontTextRoughness: 0.62,
   frontTextIor: 3,
@@ -54,6 +54,6 @@ export const config = {
   introCamZDesktop: -3,
   introCamRotXDesktop: -90,
   introCamYMobile: 30,
-  introCamZMobile: -2,
+  introCamZMobile: -3,
   introCamRotXMobile: -90
 };
