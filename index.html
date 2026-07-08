@@ -35,6 +35,20 @@
       }
     }
 
+    /* Loading Circle Size based on Aspect Ratio */
+    #loading-svg {
+      width: 37vh; /* Calcula 37% da altura para Desktop (aspect > 1) com base na distância 19.5 */
+      height: 37vh;
+      transform: rotate(-90deg);
+      overflow: visible;
+    }
+    @media (orientation: portrait) {
+      #loading-svg {
+        width: 99vw; /* O cilindro tem 99% da largura da tela no mobile (calculado do targetZ) */
+        height: 99vw;
+      }
+    }
+
     .glass-btn {
       position: fixed;
       bottom: 40px;
@@ -91,10 +105,10 @@
   <div id="loading-screen"
     style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #B16B3E; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease;">
     
-    <!-- O tamanho 37vh foi calculado fisicamente com base no FOV 45 da câmera e distância 19.5 do raio 3 -->
-    <svg style="width: 37vh; height: 37vh; transform: rotate(-90deg); overflow: visible;" viewBox="0 0 100 100">
-      <circle cx="50" cy="50" r="50" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="0.5" />
-      <circle id="loading-circle" cx="50" cy="50" r="50" fill="none" stroke="#000000" stroke-width="0.5" stroke-dasharray="315" stroke-dashoffset="315" stroke-linecap="round" style="transition: stroke-dashoffset 0.1s ease-out;" />
+    <!-- O tamanho é gerido por CSS media query para bater com o 3D -->
+    <svg id="loading-svg" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="50" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="1.5" />
+      <circle id="loading-circle" cx="50" cy="50" r="50" fill="none" stroke="#000000" stroke-width="1.5" stroke-dasharray="315" stroke-dashoffset="315" stroke-linecap="round" style="transition: stroke-dashoffset 0.1s ease-out;" />
     </svg>
     <p id="loading-text"
       style="font-family: 'Playfair Display', serif; position: absolute; font-size: 14px; letter-spacing: 4px; color: #000000;">

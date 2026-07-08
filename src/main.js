@@ -23,9 +23,14 @@ function setCameraToIntroState() {
   introComplete = false;
   introState.fogFade = 0;
   const aspect = window.innerWidth / window.innerHeight;
+  let targetZ = cameraSettings.baseZ;
+  if (aspect < 1.0) {
+    targetZ = (cameraSettings.baseZ / aspect) * 1.2;
+  }
+  
   camera.position.set(
     0,
-    aspect < 1.0 ? config.introCamYMobile : config.introCamYDesktop,
+    aspect < 1.0 ? targetZ : config.introCamYDesktop,
     aspect < 1.0 ? config.introCamZMobile : config.introCamZDesktop
   );
 
