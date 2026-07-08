@@ -28,13 +28,17 @@ function setCameraToIntroState() {
     targetZ = (cameraSettings.baseZ / aspect) * 1.2;
   }
   
+  // Para mobile, calcula a altura Y exata para que o cilindro (largura ~6) ocupe ~60vw da tela
+  // Isso evita que ele fique gigante e vaze da tela
+  const mobileIntroY = 12.1 / aspect;
+
   camera.position.set(
     0,
-    aspect < 1.0 ? targetZ : config.introCamYDesktop,
-    aspect < 1.0 ? config.introCamZMobile : config.introCamZDesktop
+    aspect < 1.0 ? mobileIntroY : config.introCamYDesktop,
+    aspect < 1.0 ? config.introCamZMobile : config.introCamZDesktop // Restaura para -3 (centro real do 3D)
   );
 
-  const rotXDeg = aspect < 1.0 ? config.introCamRotXMobile : config.introCamRotXDesktop;
+  const rotXDeg = aspect < 1.0 ? -90 : config.introCamRotXDesktop;
   camera.rotation.set(
     THREE.MathUtils.degToRad(rotXDeg),
     0,
