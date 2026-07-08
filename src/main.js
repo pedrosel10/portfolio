@@ -24,15 +24,15 @@ function setCameraToIntroState() {
   introState.fogFade = 0;
   const aspect = window.innerWidth / window.innerHeight;
   camera.position.set(
-    0, 
-    aspect < 1.0 ? config.introCamYMobile : config.introCamYDesktop, 
+    0,
+    aspect < 1.0 ? config.introCamYMobile : config.introCamYDesktop,
     aspect < 1.0 ? config.introCamZMobile : config.introCamZDesktop
   );
-  
+
   const rotXDeg = aspect < 1.0 ? config.introCamRotXMobile : config.introCamRotXDesktop;
   camera.rotation.set(
     THREE.MathUtils.degToRad(rotXDeg),
-    0, 
+    0,
     0
   );
   if (scene.fog) {
@@ -60,13 +60,13 @@ function playIntroAnimation() {
   if (aspect < 1.0) {
     targetZ = (cameraSettings.baseZ / aspect) * 1.2;
   }
-  
+
   gsap.to(introState, {
     fogFade: 1,
     duration: 2.5,
     ease: 'power3.inOut'
   });
-  
+
   gsap.to(camera.position, {
     y: 0,
     z: targetZ,
@@ -81,7 +81,7 @@ function playIntroAnimation() {
       }
     }
   });
-  
+
   gsap.to(camera.rotation, {
     x: 0,
     duration: 2.5,
@@ -109,6 +109,21 @@ function playIntroAnimation() {
     }
   });
 }
+
+THREE.DefaultLoadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+  const percent = itemsLoaded / itemsTotal;
+  const loadingCircle = document.getElementById('loading-circle');
+  const loadingText = document.getElementById('loading-text');
+  
+  if (loadingCircle) {
+    // 315 é o comprimento total (stroke-dasharray) do círculo
+    const offset = 315 - (315 * percent);
+    loadingCircle.style.strokeDashoffset = offset;
+  }
+  if (loadingText) {
+    loadingText.innerText = Math.round(percent * 100) + '%';
+  }
+};
 
 THREE.DefaultLoadingManager.onLoad = function () {
   const loadingScreen = document.getElementById('loading-screen');
@@ -162,7 +177,7 @@ function updateCameraZ() {
   }
 
   const zDiff = targetZ - cameraSettings.baseZ;
-  
+
   // Apenas atualiza o Z direto se a intro ja terminou (ex: resize da janela)
   if (introComplete) {
     camera.position.z = targetZ;
@@ -348,24 +363,24 @@ if (globalBtn) {
 // Each path = 20 numbers: M(x,y) C(x1,y1, x2,y2, x,y) C(x1,y1, x2,y2, x,y) C(x1,y1, x2,y2, x,y)
 const iconCoords = {
   'Abrir': [
-    [22.37,103.70, 22.37,103.70, 41.59,75.77, 41.59,75.77, 41.59,75.77, 60.82,47.83, 60.82,47.83, 60.82,47.83, 80.04,19.90, 80.04,19.90],
-    [31.21,122.03, 31.21,122.03, 65.30,124.37, 65.30,124.37, 65.30,124.37, 99.38,126.72, 99.38,126.72, 99.38,126.72, 133.47,129.06, 133.47,129.06],
-    [100.51,21.48, 100.51,21.48, 115.12,52.02, 115.12,52.02, 115.12,52.02, 129.72,82.56, 129.72,82.56, 129.72,82.56, 144.33,113.10, 144.33,113.10]
+    [22.37, 103.70, 22.37, 103.70, 41.59, 75.77, 41.59, 75.77, 41.59, 75.77, 60.82, 47.83, 60.82, 47.83, 60.82, 47.83, 80.04, 19.90, 80.04, 19.90],
+    [31.21, 122.03, 31.21, 122.03, 65.30, 124.37, 65.30, 124.37, 65.30, 124.37, 99.38, 126.72, 99.38, 126.72, 99.38, 126.72, 133.47, 129.06, 133.47, 129.06],
+    [100.51, 21.48, 100.51, 21.48, 115.12, 52.02, 115.12, 52.02, 115.12, 52.02, 129.72, 82.56, 129.72, 82.56, 129.72, 82.56, 144.33, 113.10, 144.33, 113.10]
   ],
   'Fechar': [
-    [0.5,32, 0.5,32, 40.57,32, 40.57,32, 40.57,32, 80.64,32, 80.64,32, 80.64,32, 120.71,32, 120.71,32],
-    [50.25,138.91, 50.25,138.91, 90.32,138.91, 90.32,138.91, 90.32,138.91, 130.40,138.91, 130.40,138.91, 130.40,138.91, 170.47,138.91, 170.47,138.91],
-    [25.37,85.46, 25.37,85.46, 65.44,85.46, 65.44,85.46, 65.44,85.46, 105.51,85.46, 105.51,85.46, 105.51,85.46, 145.59,85.46, 145.59,85.46]
+    [0.5, 32, 0.5, 32, 40.57, 32, 40.57, 32, 40.57, 32, 80.64, 32, 80.64, 32, 80.64, 32, 120.71, 32, 120.71, 32],
+    [50.25, 138.91, 50.25, 138.91, 90.32, 138.91, 90.32, 138.91, 90.32, 138.91, 130.40, 138.91, 130.40, 138.91, 130.40, 138.91, 170.47, 138.91, 170.47, 138.91],
+    [25.37, 85.46, 25.37, 85.46, 65.44, 85.46, 65.44, 85.46, 65.44, 85.46, 105.51, 85.46, 105.51, 85.46, 105.51, 85.46, 145.59, 85.46, 145.59, 85.46]
   ],
   'Voltar ao Grid': [
-    [25,31.5, 25,31.5, 25,71.57, 25,71.57, 25,71.57, 25,111.64, 25,111.64, 25,111.64, 25,151.72, 25,151.72],
-    [145.21,31.5, 145.21,31.5, 145.21,71.57, 145.21,71.57, 145.21,71.57, 145.21,111.64, 145.21,111.64, 145.21,111.64, 145.21,151.72, 145.21,151.72],
-    [25,31.5, 25,31.5, 65.07,31.5, 65.07,31.5, 65.07,31.5, 105.14,31.5, 105.14,31.5, 105.14,31.5, 145.21,31.5, 145.21,31.5]
+    [25, 31.5, 25, 31.5, 25, 71.57, 25, 71.57, 25, 71.57, 25, 111.64, 25, 111.64, 25, 111.64, 25, 151.72, 25, 151.72],
+    [145.21, 31.5, 145.21, 31.5, 145.21, 71.57, 145.21, 71.57, 145.21, 71.57, 145.21, 111.64, 145.21, 111.64, 145.21, 111.64, 145.21, 151.72, 145.21, 151.72],
+    [25, 31.5, 25, 31.5, 65.07, 31.5, 65.07, 31.5, 65.07, 31.5, 105.14, 31.5, 105.14, 31.5, 105.14, 31.5, 145.21, 31.5, 145.21, 31.5]
   ],
   'Voltar': [
-    [138.9,17, 138.9,17, 138.9,62.48, 138.9,62.48, 138.9,62.48, 138.9,107.96, 138.9,107.96, 138.9,107.96, 138.9,153.44, 138.9,153.44],
-    [32,17, 32,17, 32,62.48, 32,62.48, 32,62.48, 32,107.96, 32,107.96, 32,107.96, 32,153.44, 32,153.44],
-    [85.45,17, 85.45,17, 85.45,62.48, 85.45,62.48, 85.45,62.48, 85.45,107.96, 85.45,107.96, 85.45,107.96, 85.45,153.44, 85.45,153.44]
+    [138.9, 17, 138.9, 17, 138.9, 62.48, 138.9, 62.48, 138.9, 62.48, 138.9, 107.96, 138.9, 107.96, 138.9, 107.96, 138.9, 153.44, 138.9, 153.44],
+    [32, 17, 32, 17, 32, 62.48, 32, 62.48, 32, 62.48, 32, 107.96, 32, 107.96, 32, 107.96, 32, 153.44, 32, 153.44],
+    [85.45, 17, 85.45, 17, 85.45, 62.48, 85.45, 62.48, 85.45, 62.48, 85.45, 107.96, 85.45, 107.96, 85.45, 107.96, 85.45, 153.44, 85.45, 153.44]
   ]
 };
 
@@ -432,7 +447,9 @@ window.addEventListener('enterGalleryScene', () => {
   if (logoEl) gsap.to(logoEl, { opacity: 0, duration: 0.8 });
 });
 window.addEventListener('exitGalleryScene', () => {
-  setGlobalActionText(isFolded ? 'Abrir' : 'Fechar', 'toggleFold');
+  // Garante que o botão mostre "Abrir" porque as telas vão fechar automaticamente
+  setGlobalActionText('Abrir', 'toggleFold');
+  
   const logoEl = document.getElementById('top-logo');
   if (logoEl) gsap.to(logoEl, { opacity: 1, duration: 0.8, delay: 0.5 });
 });
@@ -581,14 +598,18 @@ cameraFolder.add(config, 'introCamYMobile', 0, 50, 0.5).name('Intro Y (Mob)').on
 cameraFolder.add(config, 'introCamZMobile', -20, 50, 0.5).name('Intro Z (Mob)').onChange(onIntroSettingChange);
 cameraFolder.add(config, 'introCamRotXMobile', -180, 180, 1).name('Intro RotX (Mob)').onChange(onIntroSettingChange);
 
-cameraFolder.add({ lock: () => {
-  isIntroLocked = true;
-  setCameraToIntroState();
-} }, 'lock').name('🔒 Travar na Intro (Ajustar)');
+cameraFolder.add({
+  lock: () => {
+    isIntroLocked = true;
+    setCameraToIntroState();
+  }
+}, 'lock').name('🔒 Travar na Intro (Ajustar)');
 
-cameraFolder.add({ play: () => {
-  playIntroAnimation();
-} }, 'play').name('▶️ Testar Animação');
+cameraFolder.add({
+  play: () => {
+    playIntroAnimation();
+  }
+}, 'play').name('▶️ Testar Animação');
 
 // Lighting settings
 const lightFolder = gui.addFolder('Luzes').close();
@@ -711,6 +732,11 @@ window.addEventListener('exitGalleryScene', (e) => {
       gsap.to(transitionLayer, {
         opacity: 0, duration: 1, onComplete: () => {
           transitionLayer.style.display = 'none';
+          
+          // Dispara a animação de fechar somente DEPOIS que a tela clarear
+          if (!isFolded) {
+            toggleFold();
+          }
         }
       });
     }
@@ -751,14 +777,14 @@ if (logoEl) {
   const word = 'PORTFOLIO';
   const letters = word.split('');
   logoEl.innerHTML = '';
-  
+
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
   const strips = [];
 
   letters.forEach((letter) => {
     const col = document.createElement('div');
     col.className = 'slot-column';
-    
+
     // Measure exact width of the original letter to prevent layout shifts
     const measure = document.createElement('span');
     measure.style.visibility = 'hidden';
@@ -772,43 +798,43 @@ if (logoEl) {
     // Use getBoundingClientRect for sub-pixel accuracy, or offsetWidth
     const width = measure.getBoundingClientRect().width;
     document.body.removeChild(measure);
-    
+
     col.style.width = width + 'px';
-    
+
     const strip = document.createElement('div');
     strip.className = 'slot-strip';
-    
+
     let html = `<div class="slot-char">${letter}</div>`;
-    for(let i=0; i<15; i++) {
+    for (let i = 0; i < 15; i++) {
       html += `<div class="slot-char">${chars[Math.floor(Math.random() * chars.length)]}</div>`;
     }
     html += `<div class="slot-char">${letter}</div>`;
-    
+
     strip.innerHTML = html;
     col.appendChild(strip);
     logoEl.appendChild(col);
     strips.push(strip);
   });
-  
+
   setInterval(() => {
     strips.forEach((strip, i) => {
       const children = strip.children;
-      for(let j=1; j<children.length-1; j++) {
+      for (let j = 1; j < children.length - 1; j++) {
         children[j].innerText = chars[Math.floor(Math.random() * chars.length)];
       }
-      
+
       gsap.set(strip, { y: 0 });
-      
+
       const targetY = - (children.length - 1) * 18;
-      
+
       gsap.to(strip, {
         y: targetY,
-        duration: 1.5 + Math.random() * 1.0, 
+        duration: 1.5 + Math.random() * 1.0,
         ease: 'power3.inOut',
-        delay: i * 0.05 
+        delay: i * 0.05
       });
     });
-  }, 5000); 
+  }, 5000);
 }
 
 export { scene, camera, renderer };

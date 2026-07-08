@@ -46,7 +46,7 @@ const angles = [0, 120, -120].map(a => a * Math.PI / 180);
 export function createScreens(scene) {
   scene.add(screensGroup);
   screensGroup.position.z = -3;
-  
+
   const numScreens = 3;
   const radius = 3;
   const height = 2.5;
@@ -54,10 +54,10 @@ export function createScreens(scene) {
   const anglePerScreen = (115 * Math.PI) / 180;
   const angleGap = (5 * Math.PI) / 180;
   const S = (radius * anglePerScreen) + (radius * angleGap);
-  
+
   const textureLoader = new THREE.TextureLoader();
   const images = ['./12802.webp', './1644.webp', './29038.webp'];
-  
+
   for (let i = 0; i < numScreens; i++) {
     const texture = textureLoader.load(images[i], (loadedTex) => {
       loadedTex.colorSpace = THREE.SRGBColorSpace;
@@ -71,7 +71,7 @@ export function createScreens(scene) {
         loadedTex.offset.y = (1 - loadedTex.repeat.y) / 2;
       }
     });
-    
+
     createSimpleScreenPanel(i, texture, radius, height, anglePerScreen, thickness, S);
   }
 
@@ -81,10 +81,10 @@ export function createScreens(scene) {
 function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen, glassThickness, S) {
   const panelGroup = new THREE.Group();
   const flatWidth = radius * anglePerScreen;
-  
+
   let geo = new THREE.BoxGeometry(flatWidth, height, glassThickness, 32, 1, 1);
   geo = geo.toNonIndexed(); // Required for three-pinata destructible mesh
-  
+
   const curvedPositions = [];
   const curvedNormals = [];
   const posAttribute = geo.attributes.position;
@@ -115,8 +115,8 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
   geo.morphAttributes.normal = [];
   geo.morphAttributes.normal[0] = new THREE.Float32BufferAttribute(curvedNormals, 3);
 
-  const colors = [config.faceColor1, config.faceColor2, config.faceColor3]; 
-  const glassMat = new THREE.MeshPhysicalMaterial({ 
+  const colors = [config.faceColor1, config.faceColor2, config.faceColor3];
+  const glassMat = new THREE.MeshPhysicalMaterial({
     map: texture,
     color: colors[index],
     transmission: config.transmission,
@@ -128,25 +128,25 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
     side: THREE.DoubleSide,
     transparent: true
   });
-  
+
   // CRITICAL FIX: The base geometry is flat, but the morph target is curved (and extends deeply in -Z). 
   // We must expand the bounding sphere so it doesn't get culled prematurely when spinning, 
   // which causes transmission glitches (white squares).
   geo.computeBoundingSphere();
-  geo.boundingSphere.radius += radius * 1.5; 
-  
+  geo.boundingSphere.radius += radius * 1.5;
+
   const glassMesh = new THREE.Mesh(geo, glassMat);
   glassMesh.castShadow = true;
   glassMesh.receiveShadow = true;
-  
+
   panelGroup.add(glassMesh);
-  
+
   panelsGroup.add(panelGroup);
-  
+
   glassMesh.userData = { isScreen: true, screenIndex: index };
   panelsDataObj.push({ group: panelGroup, mesh: glassMesh, index: index });
   panelsData.push(panelGroup);
-  
+
   setupShatterInteraction(glassMesh, panelGroup);
 
   // Add 3D text with glass material
@@ -164,13 +164,13 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
       bevelSize: 0.005,
       bevelSegments: 6 // Canto super arredondado para capturar highlights
     });
-    
-    textGeo.computeBoundingBox();
-    const centerOffset = - 0.5 * ( textGeo.boundingBox.max.x - textGeo.boundingBox.min.x );
-    const centerYOffset = - 0.5 * ( textGeo.boundingBox.max.y - textGeo.boundingBox.min.y );
-    textGeo.translate( centerOffset, centerYOffset, 0 );
 
-    const textMat = new THREE.MeshPhysicalMaterial({ 
+    textGeo.computeBoundingBox();
+    const centerOffset = - 0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x);
+    const centerYOffset = - 0.5 * (textGeo.boundingBox.max.y - textGeo.boundingBox.min.y);
+    textGeo.translate(centerOffset, centerYOffset, 0);
+
+    const textMat = new THREE.MeshPhysicalMaterial({
       color: config.frontTextColor,
       emissive: config.frontTextEmissive,
       emissiveIntensity: config.frontTextEmissiveIntensity,
@@ -186,12 +186,12 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
       side: THREE.FrontSide, // FrontSide prevents inner faces from rendering, giving solid 3D volume
       depthWrite: true // depthWrite is required for 3D depth perception
     });
-    
+
     const textMesh = new THREE.Mesh(textGeo, textMat);
     textMesh.scale.set(config.frontTextScale, config.frontTextScale, config.frontTextScale);
     // Position it slightly in front of the screen (will be overridden by updateCameraZ)
-    textMesh.position.set(0, 0, config.frontTextOffsetDesktop); 
-    
+    textMesh.position.set(0, 0, config.frontTextOffsetDesktop);
+
     // Optional: make it bend using same logic, but for now simple translation is fine
     // Or we bend it using position attributes:
     const posAttribute = textGeo.attributes.position;
@@ -199,15 +199,15 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
       const x = posAttribute.getX(i);
       const y = posAttribute.getY(i);
       const z = posAttribute.getZ(i);
-      
+
       const angle = (x / flatWidth) * anglePerScreen;
       // To curve it parallel to the screen, we need to keep its base distance
       // radius + 0.4 (distance from center)
       const rText = radius + 0.4 + z;
-      
+
       const cX = rText * Math.sin(angle);
       const cZ = rText * Math.cos(angle) - radius - 0.4; // keep it centered at z=0 locally, before offset
-      
+
       posAttribute.setXYZ(i, cX, y, cZ);
     }
     textGeo.computeVertexNormals();
@@ -223,46 +223,46 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
 
 function setFoldedState(folded, R, S) {
   const t = folded ? 1 : 0;
-  
+
   panelsDataObj.forEach(p => {
     p.mesh.morphTargetInfluences[0] = t;
   });
 
   if (folded) {
-    rightHinge.position.set(R * Math.sin(Math.PI/3), 0, R * Math.cos(Math.PI/3));
+    rightHinge.position.set(R * Math.sin(Math.PI / 3), 0, R * Math.cos(Math.PI / 3));
     rightHinge.rotation.y = 2 * Math.PI / 3;
-    rightDummy.position.set(R * Math.sin(Math.PI/3), 0, R * Math.cos(Math.PI/3));
+    rightDummy.position.set(R * Math.sin(Math.PI / 3), 0, R * Math.cos(Math.PI / 3));
 
-    leftHinge.position.set(-R * Math.sin(Math.PI/3), 0, R * Math.cos(Math.PI/3));
+    leftHinge.position.set(-R * Math.sin(Math.PI / 3), 0, R * Math.cos(Math.PI / 3));
     leftHinge.rotation.y = -2 * Math.PI / 3;
-    leftDummy.position.set(-R * Math.sin(Math.PI/3), 0, R * Math.cos(Math.PI/3));
+    leftDummy.position.set(-R * Math.sin(Math.PI / 3), 0, R * Math.cos(Math.PI / 3));
   } else {
-    rightHinge.position.set(S/2, 0, R);
+    rightHinge.position.set(S / 2, 0, R);
     rightHinge.rotation.y = 0;
-    rightDummy.position.set(S/2, 0, 0);
+    rightDummy.position.set(S / 2, 0, 0);
 
-    leftHinge.position.set(-S/2, 0, R);
+    leftHinge.position.set(-S / 2, 0, R);
     leftHinge.rotation.y = 0;
-    leftDummy.position.set(-S/2, 0, 0);
+    leftDummy.position.set(-S / 2, 0, 0);
   }
 }
 
 function assignDummies(snapAngle) {
   let minDiff = Infinity;
   let frontIndex = 0;
-  
+
   for (let i = 0; i < 3; i++) {
     let currentAngle = snapAngle + angles[i];
     currentAngle = currentAngle % (2 * Math.PI);
     if (currentAngle > Math.PI) currentAngle -= 2 * Math.PI;
     if (currentAngle <= -Math.PI) currentAngle += 2 * Math.PI;
-    
+
     if (Math.abs(currentAngle) < minDiff) {
       minDiff = Math.abs(currentAngle);
       frontIndex = i;
     }
   }
-  
+
   let rightIndex = 0, leftIndex = 0;
   for (let i = 0; i < 3; i++) {
     if (i === frontIndex) continue;
@@ -270,11 +270,11 @@ function assignDummies(snapAngle) {
     currentAngle = currentAngle % (2 * Math.PI);
     if (currentAngle > Math.PI) currentAngle -= 2 * Math.PI;
     if (currentAngle <= -Math.PI) currentAngle += 2 * Math.PI;
-    
+
     if (currentAngle > 0) rightIndex = i;
     else leftIndex = i;
   }
-  
+
   targetDummies[frontIndex] = centerDummy;
   targetDummies[rightIndex] = rightDummy;
   targetDummies[leftIndex] = leftDummy;
@@ -287,7 +287,7 @@ export function toggleFold(callback, targetIndex) {
 
   if (isFolded) {
     isTransitioning = true;
-    
+
     let snapAngle;
     if (targetIndex !== undefined && targetIndex !== null) {
       // Calculate snap angle based on targeted panel index to avoid glitches
@@ -299,7 +299,7 @@ export function toggleFold(callback, targetIndex) {
     } else {
       snapAngle = Math.round(scrollState.angle / ((120 * Math.PI) / 180)) * ((120 * Math.PI) / 180);
     }
-    
+
     const startUnfold = () => {
       assignDummies(snapAngle);
       isFolded = false;
@@ -323,10 +323,10 @@ export function toggleFold(callback, targetIndex) {
     }
   } else {
     isTransitioning = true;
-    
+
     const nearestSnapX = Math.round(scrollState.offsetX / S) * S;
     const shiftSlots = Math.round(nearestSnapX / S);
-    
+
     const startFold = () => {
       if (shiftSlots !== 0) {
         scrollState.angle += shiftSlots * ((120 * Math.PI) / 180);
@@ -367,13 +367,13 @@ function runFoldAnimation(targetFolded, duration, ease, onComplete) {
     });
   });
 
-  const rHingeTargetPos = targetFolded ? { x: R * Math.sin(Math.PI/3), z: R * Math.cos(Math.PI/3) } : { x: S/2, z: R };
+  const rHingeTargetPos = targetFolded ? { x: R * Math.sin(Math.PI / 3), z: R * Math.cos(Math.PI / 3) } : { x: S / 2, z: R };
   const rHingeTargetRot = targetFolded ? 2 * Math.PI / 3 : 0;
-  const p1DummyTargetPos = targetFolded ? { x: R * Math.sin(Math.PI/3), z: R * Math.cos(Math.PI/3) } : { x: S/2, z: 0 };
+  const p1DummyTargetPos = targetFolded ? { x: R * Math.sin(Math.PI / 3), z: R * Math.cos(Math.PI / 3) } : { x: S / 2, z: 0 };
 
-  const lHingeTargetPos = targetFolded ? { x: -R * Math.sin(Math.PI/3), z: R * Math.cos(Math.PI/3) } : { x: -S/2, z: R };
+  const lHingeTargetPos = targetFolded ? { x: -R * Math.sin(Math.PI / 3), z: R * Math.cos(Math.PI / 3) } : { x: -S / 2, z: R };
   const lHingeTargetRot = targetFolded ? -2 * Math.PI / 3 : 0;
-  const p2DummyTargetPos = targetFolded ? { x: -R * Math.sin(Math.PI/3), z: R * Math.cos(Math.PI/3) } : { x: -S/2, z: 0 };
+  const p2DummyTargetPos = targetFolded ? { x: -R * Math.sin(Math.PI / 3), z: R * Math.cos(Math.PI / 3) } : { x: -S / 2, z: 0 };
 
   gsap.to(rightHinge.position, { x: rHingeTargetPos.x, z: rHingeTargetPos.z, duration: duration, ease: ease, overwrite: true });
   gsap.to(rightHinge.rotation, { y: rHingeTargetRot, duration: duration, ease: ease, overwrite: true });
@@ -398,24 +398,24 @@ export function updateScreens() {
     const vec = new THREE.Vector3();
     const quat = new THREE.Quaternion();
     const parentQuat = new THREE.Quaternion();
-    
+
     for (let i = 0; i < 3; i++) {
       const panelGroup = panelsDataObj[i].group;
       const dummy = targetDummies[i];
       if (dummy) {
         dummy.getWorldPosition(vec);
         dummy.getWorldQuaternion(quat);
-        
+
         // Remove mouse parallax/world position offset to get local coordinates
         panelsGroup.worldToLocal(vec);
-        
+
         // Infinite Scroll Wrap Logic
         vec.x += scrollState.offsetX;
         while (vec.x > 1.5 * S) vec.x -= 3 * S;
         while (vec.x < -1.5 * S) vec.x += 3 * S;
 
         panelGroup.position.copy(vec);
-        
+
         // Remove mouse parallax/world rotation to get local rotation
         panelsGroup.getWorldQuaternion(parentQuat);
         quat.premultiply(parentQuat.invert());

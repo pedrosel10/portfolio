@@ -5,7 +5,7 @@ export const config = {
 
   // Animation
   foldDuration: 1.2,
-  
+
   // Scroll
   scrollSensitivity: 0.003,
   flatScrollSensitivity: 0.01,
@@ -40,7 +40,7 @@ export const config = {
   frontTextThickness: 2,
   frontTextOffsetDesktop: 0.4,
   frontTextOffsetMobile: 0.075,
-  
+
   // Water Reflection
   waveStrength: 0.005,
   waveSpeed: 0.9,
@@ -48,7 +48,7 @@ export const config = {
   fadeStrengthMobile: 0.45,
   fadeContrastDesktop: 1.1,
   fadeContrastMobile: 5.0,
-  
+
   // Intro Animation
   introCamYDesktop: 19.5,
   introCamZDesktop: -3,
