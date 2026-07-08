@@ -332,10 +332,10 @@ if (globalBtn) {
   globalBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (currentActionType === 'toggleFold') {
+      const wasFolded = isFolded;
       toggleFold();
-      // Predict next state and update text immediately for snappier UI
-      const willBeFolded = !isFolded; // Since we just triggered a toggle
-      setGlobalActionText(willBeFolded ? 'Abrir' : 'Fechar');
+      // wasFolded=true → opening → show 'Fechar'; wasFolded=false → closing → show 'Abrir'
+      setGlobalActionText(wasFolded ? 'Fechar' : 'Abrir');
     } else if (currentActionType === 'exitGallery') {
       window.dispatchEvent(new CustomEvent('exitGalleryScene'));
     } else if (currentActionType === 'exitProject') {
@@ -344,26 +344,80 @@ if (globalBtn) {
   });
 }
 
+// --- Icon Morphing System (GSAP) ---
+// Each path = 20 numbers: M(x,y) C(x1,y1, x2,y2, x,y) C(x1,y1, x2,y2, x,y) C(x1,y1, x2,y2, x,y)
+const iconCoords = {
+  'Abrir': [
+    [22.37,103.70, 22.37,103.70, 41.59,75.77, 41.59,75.77, 41.59,75.77, 60.82,47.83, 60.82,47.83, 60.82,47.83, 80.04,19.90, 80.04,19.90],
+    [31.21,122.03, 31.21,122.03, 65.30,124.37, 65.30,124.37, 65.30,124.37, 99.38,126.72, 99.38,126.72, 99.38,126.72, 133.47,129.06, 133.47,129.06],
+    [100.51,21.48, 100.51,21.48, 115.12,52.02, 115.12,52.02, 115.12,52.02, 129.72,82.56, 129.72,82.56, 129.72,82.56, 144.33,113.10, 144.33,113.10]
+  ],
+  'Fechar': [
+    [0.5,32, 0.5,32, 40.57,32, 40.57,32, 40.57,32, 80.64,32, 80.64,32, 80.64,32, 120.71,32, 120.71,32],
+    [50.25,138.91, 50.25,138.91, 90.32,138.91, 90.32,138.91, 90.32,138.91, 130.40,138.91, 130.40,138.91, 130.40,138.91, 170.47,138.91, 170.47,138.91],
+    [25.37,85.46, 25.37,85.46, 65.44,85.46, 65.44,85.46, 65.44,85.46, 105.51,85.46, 105.51,85.46, 105.51,85.46, 145.59,85.46, 145.59,85.46]
+  ],
+  'Voltar ao Grid': [
+    [25,31.5, 25,31.5, 25,71.57, 25,71.57, 25,71.57, 25,111.64, 25,111.64, 25,111.64, 25,151.72, 25,151.72],
+    [145.21,31.5, 145.21,31.5, 145.21,71.57, 145.21,71.57, 145.21,71.57, 145.21,111.64, 145.21,111.64, 145.21,111.64, 145.21,151.72, 145.21,151.72],
+    [25,31.5, 25,31.5, 65.07,31.5, 65.07,31.5, 65.07,31.5, 105.14,31.5, 105.14,31.5, 105.14,31.5, 145.21,31.5, 145.21,31.5]
+  ],
+  'Voltar': [
+    [138.9,17, 138.9,17, 138.9,62.48, 138.9,62.48, 138.9,62.48, 138.9,107.96, 138.9,107.96, 138.9,107.96, 138.9,153.44, 138.9,153.44],
+    [32,17, 32,17, 32,62.48, 32,62.48, 32,62.48, 32,107.96, 32,107.96, 32,107.96, 32,153.44, 32,153.44],
+    [85.45,17, 85.45,17, 85.45,62.48, 85.45,62.48, 85.45,62.48, 85.45,107.96, 85.45,107.96, 85.45,107.96, 85.45,153.44, 85.45,153.44]
+  ]
+};
+
+// Live coordinate state for each of the 3 paths (starts as 'Abrir')
+const liveCoords = [
+  [...iconCoords['Abrir'][0]],
+  [...iconCoords['Abrir'][1]],
+  [...iconCoords['Abrir'][2]]
+];
+
+// References to the 3 SVG path elements
+const pathEls = [
+  document.getElementById('icon-path-1'),
+  document.getElementById('icon-path-2'),
+  document.getElementById('icon-path-3')
+];
+
+// Active tweens so we can kill them on re-trigger
+let iconTweens = [];
+
+function coordsToD(c) {
+  return `M ${c[0]} ${c[1]} C ${c[2]} ${c[3]}, ${c[4]} ${c[5]}, ${c[6]} ${c[7]} C ${c[8]} ${c[9]}, ${c[10]} ${c[11]}, ${c[12]} ${c[13]} C ${c[14]} ${c[15]}, ${c[16]} ${c[17]}, ${c[18]} ${c[19]}`;
+}
+
 export function setGlobalActionText(text, newActionType = null) {
   if (newActionType) currentActionType = newActionType;
 
-  const textEl = document.getElementById('global-action-text');
-  if (!textEl || textEl.innerText === text) return;
+  const btnEl = document.getElementById('global-action-btn');
+  if (!btnEl) return;
+  if (btnEl.dataset.currentState === text) return;
+  btnEl.dataset.currentState = text;
 
-  textEl.classList.remove('slide-normal');
-  textEl.classList.add('slide-up-out');
+  const targetCoords = iconCoords[text];
+  if (!targetCoords) return;
 
-  setTimeout(() => {
-    textEl.innerText = text;
-    textEl.classList.remove('slide-up-out');
-    textEl.classList.add('slide-down-in');
+  // Kill any running morphs
+  iconTweens.forEach(t => t.kill());
+  iconTweens = [];
 
-    // Força o reflow para reiniciar a animação
-    void textEl.offsetWidth;
+  for (let i = 0; i < 3; i++) {
+    const target = {};
+    for (let j = 0; j < 20; j++) target[j] = targetCoords[i][j];
 
-    textEl.classList.remove('slide-down-in');
-    textEl.classList.add('slide-normal');
-  }, 200); // Metade do tempo da transition do CSS
+    const tween = gsap.to(liveCoords[i], {
+      ...target,
+      duration: 0.8,
+      ease: 'power2.inOut',
+      delay: i * 0.08,
+      onUpdate: () => pathEls[i] && pathEls[i].setAttribute('d', coordsToD(liveCoords[i]))
+    });
+    iconTweens.push(tween);
+  }
 }
 
 window.addEventListener('openProjectDetail', () => {
