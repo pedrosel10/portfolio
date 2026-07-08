@@ -40,6 +40,8 @@
       height: 37vh;
       transform: rotate(-90deg);
       overflow: visible;
+      flex-shrink: 0;
+      display: block;
     }
     @media (orientation: portrait) {
       #loading-svg {
@@ -104,7 +106,7 @@
 
 <body>
   <div id="loading-screen"
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #B16B3E; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease;">
+    style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #B16B3E; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease;">
     
     <!-- O tamanho é gerido por CSS media query para bater com o 3D -->
     <svg id="loading-svg" viewBox="0 0 100 100">
