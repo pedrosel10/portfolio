@@ -22,6 +22,8 @@ const introState = { fogFade: 1 };
 function setCameraToIntroState() {
   introComplete = false;
   introState.fogFade = 0;
+  if (typeof updateBgAspect === 'function') updateBgAspect(); // Esconde o fundo imediatamente
+
   const aspect = window.innerWidth / window.innerHeight;
   let targetZ = cameraSettings.baseZ;
   if (aspect < 1.0) {
@@ -45,10 +47,8 @@ function setCameraToIntroState() {
     0
   );
   if (scene.fog) {
-    const zDiff = camera.position.z - cameraSettings.baseZ;
-    const extraDist = (1 - introState.fogFade) * 100;
-    scene.fog.near = fogSettings.baseNear + zDiff + extraDist;
-    scene.fog.far = fogSettings.baseFar + zDiff + extraDist;
+    scene.fog.near = fogSettings.baseNear + 100;
+    scene.fog.far = fogSettings.baseFar + 100;
   }
 }
 
@@ -73,7 +73,8 @@ function playIntroAnimation() {
   gsap.to(introState, {
     fogFade: 1,
     duration: 2.5,
-    ease: 'power3.inOut'
+    ease: 'power3.inOut',
+    onUpdate: updateBgAspect
   });
 
   gsap.to(camera.position, {
@@ -238,8 +239,7 @@ function updateCameraZ() {
 }
 updateCameraZ(); // Initial call
 
-// Set initial intro position before first render
-setCameraToIntroState();
+// Set initial intro position moved down
 
 scene.add(camera);
 
@@ -280,11 +280,14 @@ bgImage.onload = () => {
   updateBgAspect();
 };
 
+// Set initial intro position before first render
+setCameraToIntroState();
+
 
 function updateReflectionBg(w, h, offsetX, offsetY, drawW, drawH) {
   bgCtxUnmasked.fillStyle = config.bgColor;
   bgCtxUnmasked.fillRect(0, 0, w, h);
-  bgCtxUnmasked.globalAlpha = bgReflectionSettings.opacity;
+  bgCtxUnmasked.globalAlpha = bgReflectionSettings.opacity * introState.fogFade;
   bgCtxUnmasked.drawImage(bgImage, offsetX, offsetY, drawW, drawH);
   bgCtxUnmasked.globalAlpha = 1.0;
   bgTextureUnmasked.needsUpdate = true;
@@ -294,7 +297,7 @@ function updateMainBg(w, h, offsetX, offsetY, drawW, drawH) {
   bgCtx.fillStyle = config.bgColor;
   bgCtx.fillRect(0, 0, w, h);
   
-  bgCtx.globalAlpha = 1.0;
+  bgCtx.globalAlpha = introState.fogFade;
   bgCtx.drawImage(bgImage, offsetX, offsetY, drawW, drawH);
 
   const grad = bgCtx.createLinearGradient(0, 0, 0, h);
@@ -463,7 +466,7 @@ createScreens(scene);
 reflector = createFloor(scene);
 
 const fogWallSettings = {
-  opacity: 1.0,
+  opacity: 0.4,
   gradStart: 1.0,
   gradEnd: 0.0,
   posY: 18.5
