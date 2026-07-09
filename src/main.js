@@ -19,7 +19,7 @@ let introComplete = false;
 let isIntroLocked = false;
 const introState = { fogFade: 1 };
 const fogWallSettings = {
-  opacity: 0.4,
+  opacity: 0.0,
   gradStart: 1.0,
   gradEnd: 0.0,
   posY: 18.5
@@ -106,9 +106,9 @@ function playIntroAnimation() {
     onComplete: () => {
       introComplete = true;
 
-      // Fade out the fog wall from 100% to 40%
+      // Fade out the fog wall from 100% to 0%
       gsap.to(fogWallSettings, {
-        opacity: 0.4,
+        opacity: 0.0,
         duration: 1.5,
         ease: 'power2.inOut',
         onUpdate: () => {
@@ -309,7 +309,7 @@ const bgCtxUnmasked = bgCanvasUnmasked.getContext('2d', { alpha: false });
 const bgTextureUnmasked = new THREE.CanvasTexture(bgCanvasUnmasked);
 bgTextureUnmasked.colorSpace = THREE.SRGBColorSpace;
 
-const bgReflectionSettings = { opacity: 0.3, mainGradientOpacity: 0.85 };
+const bgReflectionSettings = { opacity: 1.0, mainGradientOpacity: 0.85 };
 const bgImage = new Image();
 bgImage.src = './img_fundo.webp';
 bgImage.onload = () => {
