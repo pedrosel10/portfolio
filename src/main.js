@@ -18,11 +18,24 @@ window.activeScene = 'main';
 let introComplete = false;
 let isIntroLocked = false;
 const introState = { fogFade: 1 };
+const fogWallSettings = {
+  opacity: 0.4,
+  gradStart: 1.0,
+  gradEnd: 0.0,
+  posY: 18.5
+};
+let fogWall = null;
 
 function setCameraToIntroState() {
   introComplete = false;
   introState.fogFade = 0;
   if (typeof updateBgAspect === 'function') updateBgAspect(); // Esconde o fundo imediatamente
+
+  // Fog wall starts completely opaque
+  fogWallSettings.opacity = 1.0;
+  if (fogWall) {
+    fogWall.material.uniforms.uOpacity.value = 1.0;
+  }
 
   const aspect = window.innerWidth / window.innerHeight;
   let targetZ = cameraSettings.baseZ;
@@ -46,6 +59,7 @@ function setCameraToIntroState() {
     0,
     0
   );
+
   if (scene.fog) {
     scene.fog.near = fogSettings.baseNear + 100;
     scene.fog.far = fogSettings.baseFar + 100;
@@ -70,13 +84,6 @@ function playIntroAnimation() {
     targetZ = (cameraSettings.baseZ / aspect) * 1.2;
   }
 
-  gsap.to(introState, {
-    fogFade: 1,
-    duration: 2.5,
-    ease: 'power3.inOut',
-    onUpdate: updateBgAspect
-  });
-
   gsap.to(camera.position, {
     y: 0,
     z: targetZ,
@@ -98,10 +105,39 @@ function playIntroAnimation() {
     ease: 'power3.inOut',
     onComplete: () => {
       introComplete = true;
+
+      // Fade out the fog wall from 100% to 40%
+      gsap.to(fogWallSettings, {
+        opacity: 0.4,
+        duration: 1.5,
+        ease: 'power2.inOut',
+        onUpdate: () => {
+          if (fogWall) {
+            fogWall.material.uniforms.uOpacity.value = fogWallSettings.opacity;
+          }
+        }
+      });
+
+      // Fade in the background and push back the 3D fog
+      gsap.to(introState, {
+        fogFade: 1,
+        duration: 1.5,
+        ease: 'power2.inOut',
+        onUpdate: () => {
+          updateBgAspect();
+          if (scene.fog) {
+            const zDiff = camera.position.z - cameraSettings.baseZ;
+            const extraDist = (1 - introState.fogFade) * 100;
+            scene.fog.near = fogSettings.baseNear + zDiff + extraDist;
+            scene.fog.far = fogSettings.baseFar + zDiff + extraDist;
+          }
+        }
+      });
+
       if (reflector) {
         gsap.to(reflector.material.uniforms.globalOpacity, {
           value: 1.0,
-          duration: 0.8,
+          duration: 1.5,
           ease: 'power2.inOut'
         });
       }
@@ -465,12 +501,7 @@ createScreens(scene);
 // Reflective Floor
 reflector = createFloor(scene);
 
-const fogWallSettings = {
-  opacity: 0.4,
-  gradStart: 1.0,
-  gradEnd: 0.0,
-  posY: 18.5
-};
+// moved fogWallSettings to top of file
 
 const fogWallGeom = new THREE.PlaneGeometry(100, 40);
 const fogWallMat = new THREE.ShaderMaterial({
@@ -505,7 +536,7 @@ const fogWallMat = new THREE.ShaderMaterial({
   transparent: true,
   depthWrite: false
 });
-const fogWall = new THREE.Mesh(fogWallGeom, fogWallMat);
+fogWall = new THREE.Mesh(fogWallGeom, fogWallMat);
 // The floor is at y = -1.5 and ends at z = -25. Place the wall just before the edge.
 fogWall.position.set(0, fogWallSettings.posY, -24.5); 
 scene.add(fogWall);
