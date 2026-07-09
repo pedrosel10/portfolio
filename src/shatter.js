@@ -35,22 +35,22 @@ export function setupShatterInteraction(mesh, group) {
     allPanels.forEach(panel => {
       if (panel !== originalParent) {
         if (!panel.userData.origScale) panel.userData.origScale = panel.scale.clone();
-        gsap.to(panel.scale, { x: 0, y: 0, z: 0, duration: 0.8, ease: "power3.inOut" });
+        gsap.to(panel.scale, { x: 0, y: 0, z: 0, duration: 0.4, ease: "power3.inOut" });
       }
     });
     
     // Animate the clicked panel to become the portal background
     gsap.to(mesh.position, {
       x: targetPos.x, y: targetPos.y, z: targetPos.z,
-      duration: 1.2, ease: "power3.inOut"
+      duration: 0.6, ease: "power3.inOut"
     });
     gsap.to(mesh.rotation, {
       x: targetRot.x, y: targetRot.y, z: targetRot.z,
-      duration: 1.2, ease: "power3.inOut"
+      duration: 0.6, ease: "power3.inOut"
     });
     gsap.to(mesh.scale, {
       x: targetScale.x, y: targetScale.y, z: targetScale.z,
-      duration: 1.2, ease: "power3.inOut",
+      duration: 0.6, ease: "power3.inOut",
       onComplete: () => {
         isTransitioning = false;
         isOpen = true;
@@ -59,7 +59,7 @@ export function setupShatterInteraction(mesh, group) {
         const portfolioView = document.getElementById('portfolio-view');
         portfolioView.style.display = 'block';
         portfolioView.style.pointerEvents = 'auto';
-        gsap.to(portfolioView, { opacity: 1, duration: 0.5 });
+        gsap.to(portfolioView, { opacity: 1, duration: 0.25 });
       }
     });
 
@@ -75,7 +75,7 @@ export function setupShatterInteraction(mesh, group) {
       // Fade out HTML
       gsap.to(portfolioView, { 
         opacity: 0, 
-        duration: 0.4, 
+        duration: 0.2, 
         onComplete: () => {
           portfolioView.style.display = 'none';
           
@@ -84,9 +84,9 @@ export function setupShatterInteraction(mesh, group) {
           // then we animate its LOCAL transform back to 0,0,0
           originalParent.attach(mesh);
           
-          gsap.to(mesh.position, { x: 0, y: 0, z: 0, duration: 1.2, ease: "power3.inOut" });
-          gsap.to(mesh.rotation, { x: 0, y: 0, z: 0, duration: 1.2, ease: "power3.inOut" });
-          gsap.to(mesh.scale, { x: 1, y: 1, z: 1, duration: 1.2, ease: "power3.inOut",
+          gsap.to(mesh.position, { x: 0, y: 0, z: 0, duration: 0.6, ease: "power3.inOut" });
+          gsap.to(mesh.rotation, { x: 0, y: 0, z: 0, duration: 0.6, ease: "power3.inOut" });
+          gsap.to(mesh.scale, { x: 1, y: 1, z: 1, duration: 0.6, ease: "power3.inOut",
             onComplete: () => {
               isTransitioning = false;
               isOpen = false;
@@ -100,7 +100,7 @@ export function setupShatterInteraction(mesh, group) {
                 x: panel.userData.origScale.x, 
                 y: panel.userData.origScale.y, 
                 z: panel.userData.origScale.z, 
-                duration: 1.2, ease: "power3.inOut" 
+                duration: 0.6, ease: "power3.inOut" 
               });
             }
           });

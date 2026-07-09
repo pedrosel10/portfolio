@@ -4,18 +4,31 @@ import gsap from 'gsap';
 export const galleryScene = new THREE.Scene();
 galleryScene.background = new THREE.Color('#050505');
 
+function getCameraBounds() {
+  let w = window.innerWidth;
+  let h = window.innerHeight;
+  const maxW = 1800; // Prevent seeing past the 5-column grid (5 * 400 = 2000)
+  if (w > maxW) {
+    h = h * (maxW / w);
+    w = maxW;
+  }
+  return { w, h };
+}
+
+const initialBounds = getCameraBounds();
 export const galleryCamera = new THREE.OrthographicCamera(
-  window.innerWidth / -2, window.innerWidth / 2,
-  window.innerHeight / 2, window.innerHeight / -2,
+  initialBounds.w / -2, initialBounds.w / 2,
+  initialBounds.h / 2, initialBounds.h / -2,
   0.1, 1000
 );
 galleryCamera.position.z = 100;
 
 window.addEventListener('resize', () => {
-  galleryCamera.left = window.innerWidth / -2;
-  galleryCamera.right = window.innerWidth / 2;
-  galleryCamera.top = window.innerHeight / 2;
-  galleryCamera.bottom = window.innerHeight / -2;
+  const bounds = getCameraBounds();
+  galleryCamera.left = bounds.w / -2;
+  galleryCamera.right = bounds.w / 2;
+  galleryCamera.top = bounds.h / 2;
+  galleryCamera.bottom = bounds.h / -2;
   galleryCamera.updateProjectionMatrix();
 });
 
@@ -34,79 +47,82 @@ const textureLoader = new THREE.TextureLoader();
 
 const projectsData = [
   {
-    cover: './PROJETO 01/imagem1_1x.webp',
+    cover: './PROJETO 01/capa_1x.webp',
     images: [
-      './PROJETO 01/imagem2_1x.webp',
-      './PROJETO 01/imagem3_1x.webp',
-      './PROJETO 01/imagem4_1x.webp',
-      './PROJETO 01/imagem5_1x.webp',
-      './PROJETO 01/imagem6_1x.webp',
-      './PROJETO 01/imagem7_1x.webp',
-      './PROJETO 01/imagem8_1x.webp'
+      './PROJETO 01/img1_1x.webp',
+      './PROJETO 01/img2_1x.webp',
+      './PROJETO 01/img3_1x.webp',
+      './PROJETO 01/img4_1x.webp',
+      './PROJETO 01/img5_1x.webp',
+      './PROJETO 01/img6_1x.webp',
+      './PROJETO 01/img7_1x.webp',
+      './PROJETO 01/img8_1x.webp',
+      './PROJETO 01/img9_1x.webp',
+      './PROJETO 01/img10_1x.webp',
+      './PROJETO 01/img11_1x.webp',
+      './PROJETO 01/img12_1x.webp',
+      './PROJETO 01/img13_1x.webp',
+      './PROJETO 01/img14_1x.webp'
     ]
   },
   {
-    cover: './PROJETO 02/keyvisual15_1x.webp',
+    cover: './PROJETO 02/capa_1x.webp',
     images: [
-      './PROJETO 02/keyvisual16_1x.webp',
-      './PROJETO 02/keyvisual17_1x.webp',
-      './PROJETO 02/keyvisual18_1x.webp',
-      './PROJETO 02/keyvisual19_1x.webp',
-      './PROJETO 02/keyvisual20_1x.webp',
-      './PROJETO 02/keyvisual21_1x.webp',
-      './PROJETO 02/keyvisual22_1x.webp',
-      './PROJETO 02/keyvisual23_1x.webp',
-      './PROJETO 02/keyvisual24_1x.webp',
-      './PROJETO 02/keyvisual25_1x.webp',
-      './PROJETO 02/keyvisual26_1x.webp',
-      './PROJETO 02/keyvisual27_1x.webp',
-      './PROJETO 02/keyvisual28_1x.webp',
-      './PROJETO 02/keyvisual29_1x.webp',
-      './PROJETO 02/keyvisual30_1x.webp',
-      './PROJETO 02/keyvisual31_1x.webp',
-      './PROJETO 02/keyvisual32_1x.webp',
-      './PROJETO 02/keyvisual33_1x.webp',
-      './PROJETO 02/keyvisual34_1x.webp',
-      './PROJETO 02/keyvisual35_1x.webp'
+      './PROJETO 02/img1_1x.webp',
+      './PROJETO 02/img2_1x.webp',
+      './PROJETO 02/img3_1x.webp',
+      './PROJETO 02/img4_1x.webp',
+      './PROJETO 02/img5_1x.webp',
+      './PROJETO 02/img6_1x.webp',
+      './PROJETO 02/img7_1x.webp',
+      './PROJETO 02/img8_1x.webp',
+      './PROJETO 02/img9_1x.webp',
+      './PROJETO 02/img10_1x.webp'
     ]
   },
   {
-    cover: './PROJETO 03/1128386_oq3a6w1_1_1x.webp',
+    cover: './PROJETO 03/capa_1x.webp',
     images: [
-      './PROJETO 03/18378685_subway2escamockup4fp_1_1_1x.webp',
-      './PROJETO 03/21667584_metal_sheet_logo_mockup_1_1x.webp',
-      './PROJETO 03/23444374_6713390_1_1x.webp',
-      './PROJETO 03/24943259_pencil_sketch_logo_mockup_02_1_1_1x.webp',
-      './PROJETO 03/29305360_shopping_bag_mockup_11_2_1x.webp',
-      './PROJETO 03/3383781_57286_1_1x.webp',
-      './PROJETO 03/74166512_stationery_mockup_dark_style_1_1x.webp',
-      './PROJETO 03/8835946_2594_1_1x.webp',
-      './PROJETO 03/free_mousepad_mockup_3_1_1x.webp',
-      './PROJETO 03/free_poster_frame_mockup_1_1_1x.webp',
-      './PROJETO 03/stationery_mockup_ok_3_1_1x.webp'
+      './PROJETO 03/img1_1x.webp',
+      './PROJETO 03/img2_1x.webp',
+      './PROJETO 03/img3_1x.webp',
+      './PROJETO 03/img4_1x.webp',
+      './PROJETO 03/img5_1x.webp',
+      './PROJETO 03/img6_1x.webp',
+      './PROJETO 03/img7_1x.webp',
+      './PROJETO 03/img8_1x.webp',
+      './PROJETO 03/img9_1x.webp',
+      './PROJETO 03/img10_1x.webp'
     ]
   },
   {
-    cover: './PROJETO 04/t02_1_1x.webp',
+    cover: './PROJETO 04/capa_1x.webp',
     images: [
-      './PROJETO 04/t03_1_1x.webp',
-      './PROJETO 04/t04_1_1x.webp',
-      './PROJETO 04/t05_1_1x.webp',
-      './PROJETO 04/t06_1_1x.webp',
-      './PROJETO 04/t07_1_1x.webp',
-      './PROJETO 04/t08_1_1x.webp',
-      './PROJETO 04/t09_1_1x.webp',
-      './PROJETO 04/t010_1_1x.webp',
-      './PROJETO 04/t011_1_1x.webp',
-      './PROJETO 04/t012_1_1x.webp',
-      './PROJETO 04/t013_1_1x.webp',
-      './PROJETO 04/t014_1_1x.webp',
-      './PROJETO 04/t015_1_1x.webp',
-      './PROJETO 04/t016_1_1x.webp',
-      './PROJETO 04/t017_1_1x.webp',
-      './PROJETO 04/t018_1_1x.webp',
-      './PROJETO 04/t019_1_1x.webp',
-      './PROJETO 04/t020_1_1x.webp'
+      './PROJETO 04/img1_1x.webp',
+      './PROJETO 04/img2_1x.webp',
+      './PROJETO 04/img3_1x.webp',
+      './PROJETO 04/img4_1x.webp',
+      './PROJETO 04/img5_1x.webp',
+      './PROJETO 04/img6_1x.webp',
+      './PROJETO 04/img7_1x.webp',
+      './PROJETO 04/img8_1x.webp',
+      './PROJETO 04/img9_1x.webp',
+      './PROJETO 04/img10_1x.webp',
+      './PROJETO 04/img11_1x.webp'
+    ]
+  },
+  {
+    cover: './PROJETO 05/capa_1x.webp',
+    images: [
+      './PROJETO 05/img1_1x.webp',
+      './PROJETO 05/img2_1x.webp',
+      './PROJETO 05/img3_1x.webp',
+      './PROJETO 05/img4_1x.webp',
+      './PROJETO 05/img5_1x.webp',
+      './PROJETO 05/img6_1x.webp',
+      './PROJETO 05/img7_1x.webp',
+      './PROJETO 05/img8_1x.webp',
+      './PROJETO 05/img9_1x.webp'
     ]
   }
 ];
@@ -150,7 +166,7 @@ galleryScene.add(bgGrid);
 
 
 const cols = 5;
-const rows = 5;
+const rows = 3;
 const isMobile = window.innerWidth < 768;
 const itemWidth = isMobile ? window.innerWidth * 0.6 : 300;
 const itemHeight = isMobile ? window.innerWidth * 0.6 : 300;
@@ -193,8 +209,8 @@ let gridIndex = 0;
 for (let r = 0; r < rows; r++) {
   for (let c = 0; c < cols; c++) {
     
-    // Mostra os 4 primeiros projetos reais (índices 0 a 3). O resto vira EM BREVE.
-    if (gridIndex < 4) {
+    // Mostra os projetos reais. O resto vira EM BREVE.
+    if (gridIndex < projectsData.length) {
       const projIndex = gridIndex % projectsData.length;
       const pData = projectsData[projIndex];
       
@@ -457,7 +473,7 @@ function openProject(clickedMesh) {
   const targetY = -clickedMesh.userData.currentY; // back to screen space offset
   
   // Calcular o zoom para a imagem ocupar: 90% no mobile, 60% no desktop
-  const pct = isMobile ? 0.9 : 0.6;
+  const pct = isMobile ? 0.9 : 0.8;
   const targetZoomX = (window.innerWidth * pct) / itemWidth;
   const targetZoomY = (window.innerHeight * pct) / itemHeight;
   const targetZoom = Math.min(targetZoomX, targetZoomY);

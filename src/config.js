@@ -4,7 +4,7 @@ export const config = {
   hdriSaturation: 1,
 
   // Animation
-  foldDuration: 1.2,
+  foldDuration: 0.6,
 
   // Scroll
   scrollSensitivity: 0.003,
