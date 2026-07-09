@@ -12,13 +12,16 @@
 }
 
 html {
-  background-color: #B16B3E;
+  width: 100vw;
+  height: 100vh;
 }
 
 body {
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
   /* Hide scrollbars as we will use wheel events manually */
-  background: #B16B3E;
+  background-color: #B16B3E;
   font-family: 'Playfair Display', serif;
   user-select: none;
 }
@@ -80,7 +83,8 @@ canvas {
 
 .slot-column {
   overflow: hidden;
-  height: 18px; /* Altura exata da fonte/linha */
+  height: 18px;
+  /* Altura exata da fonte/linha */
   line-height: 18px;
   display: inline-block;
   position: relative;
@@ -109,7 +113,7 @@ canvas {
   width: 100vw;
   height: 100vh;
   pointer-events: none;
-  z-index: 10005; 
+  z-index: 10005;
   overflow: hidden;
 }
 
@@ -138,8 +142,13 @@ canvas {
 }
 
 @keyframes scanlineMove {
-  0% { transform: translateY(-100vh); }
-  100% { transform: translateY(110vh); }
+  0% {
+    transform: translateY(-100vh);
+  }
+
+  100% {
+    transform: translateY(110vh);
+  }
 }
 
 .tv-static {
@@ -154,7 +163,15 @@ canvas {
 }
 
 @keyframes staticNoise {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(1%, 2%); }
-  100% { transform: translate(-1%, -2%); }
+  0% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(1%, 2%);
+  }
+
+  100% {
+    transform: translate(-1%, -2%);
+  }
 }

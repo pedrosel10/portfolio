@@ -27,7 +27,7 @@ function setCameraToIntroState() {
   if (aspect < 1.0) {
     targetZ = (cameraSettings.baseZ / aspect) * 1.2;
   }
-  
+
   // Para mobile, calcula a altura Y exata para que o cilindro (largura ~6) ocupe ~60vw da tela
   // Isso evita que ele fique gigante e vaze da tela
   const mobileIntroY = 12.1 / aspect;
@@ -119,31 +119,67 @@ function playIntroAnimation() {
   });
 }
 
-THREE.DefaultLoadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
-  const percent = itemsLoaded / itemsTotal;
+const loadingState = { progress: 0 };
+let realLoadComplete = false;
+
+// Inicia a animação simulada indo até 99%
+let loadingTween = gsap.to(loadingState, {
+  progress: 0.99,
+  duration: 2.5, // Garante pelo menos 2.5s de animação
+  ease: "power1.inOut",
+  onUpdate: updateLoadingVisuals,
+  onComplete: () => {
+    // Se o carregamento real já terminou, faz o 1% final
+    if (realLoadComplete) {
+      doFinalStep();
+    }
+  }
+});
+
+function updateLoadingVisuals() {
   const loadingCircle = document.getElementById('loading-circle');
   const loadingText = document.getElementById('loading-text');
-  
   if (loadingCircle) {
-    // 315 é o comprimento total (stroke-dasharray) do círculo
-    const offset = 315 - (315 * percent);
+    const offset = 315 - (315 * loadingState.progress);
     loadingCircle.style.strokeDashoffset = offset;
   }
   if (loadingText) {
-    loadingText.innerText = Math.round(percent * 100) + '%';
+    loadingText.innerText = Math.round(loadingState.progress * 100) + '%';
   }
-};
+}
 
-THREE.DefaultLoadingManager.onLoad = function () {
+function doFinalStep() {
+  gsap.to(loadingState, {
+    progress: 1,
+    duration: 0.3,
+    onUpdate: updateLoadingVisuals,
+    onComplete: finishLoading
+  });
+}
+
+function finishLoading() {
   const loadingScreen = document.getElementById('loading-screen');
-  if (loadingScreen) {
+  if (loadingScreen && loadingScreen.style.opacity !== '0') {
     loadingScreen.style.opacity = '0';
     setTimeout(() => {
       loadingScreen.style.display = 'none';
       playIntroAnimation();
     }, 800);
-  } else {
+  } else if (!loadingScreen) {
     playIntroAnimation();
+  }
+}
+
+THREE.DefaultLoadingManager.onProgress = function (url, itemsLoaded, itemsTotal) {
+  // Ignoramos o progresso real para focar na animação suave
+};
+
+THREE.DefaultLoadingManager.onLoad = function () {
+  realLoadComplete = true;
+  // Se a animação simulada já tiver chegado no 99%, finaliza agora.
+  // Caso contrário, ela vai chamar doFinalStep() quando chegar no 99%.
+  if (!loadingTween.isActive()) {
+    doFinalStep();
   }
 };
 
@@ -155,7 +191,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
 
 export const cameraSettings = { baseZ: 6.1 };
-const fogSettings = { baseNear: 7.1, baseFar: 15.1 };
+const fogSettings = { baseNear: 7, baseFar: 15 };
 
 // Background is transparent to show the HTML text behind it
 // Fog can help fade the reflection
@@ -216,9 +252,97 @@ scene.environmentIntensity = 1.2; // Aumentado para dar mais brilho ao HDRI sem 
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.domElement.style.touchAction = 'none'; // Prevent browser scroll when dragging canvas
-// Use opaque background matching config.bgColor to ensure soft canvas edges
-renderer.setClearColor(config.bgColor, 1);
+// Make the canvas transparent as fallback
+renderer.setClearColor(0x000000, 0);
 appContainer.appendChild(renderer.domElement);
+
+// --- Background Texture with Canvas Gradient Mask ---
+const bgCanvas = document.createElement('canvas');
+bgCanvas.width = window.innerWidth;
+bgCanvas.height = window.innerHeight;
+const bgCtx = bgCanvas.getContext('2d', { alpha: false });
+const bgTexture = new THREE.CanvasTexture(bgCanvas);
+bgTexture.colorSpace = THREE.SRGBColorSpace;
+scene.background = bgTexture;
+
+// Unmasked texture for the floor reflection
+const bgCanvasUnmasked = document.createElement('canvas');
+bgCanvasUnmasked.width = window.innerWidth;
+bgCanvasUnmasked.height = window.innerHeight;
+const bgCtxUnmasked = bgCanvasUnmasked.getContext('2d', { alpha: false });
+const bgTextureUnmasked = new THREE.CanvasTexture(bgCanvasUnmasked);
+bgTextureUnmasked.colorSpace = THREE.SRGBColorSpace;
+
+const bgReflectionSettings = { opacity: 0.3, mainGradientOpacity: 0.85 };
+const bgImage = new Image();
+bgImage.src = './img_fundo.webp';
+bgImage.onload = () => {
+  updateBgAspect();
+};
+
+
+function updateReflectionBg(w, h, offsetX, offsetY, drawW, drawH) {
+  bgCtxUnmasked.fillStyle = config.bgColor;
+  bgCtxUnmasked.fillRect(0, 0, w, h);
+  bgCtxUnmasked.globalAlpha = bgReflectionSettings.opacity;
+  bgCtxUnmasked.drawImage(bgImage, offsetX, offsetY, drawW, drawH);
+  bgCtxUnmasked.globalAlpha = 1.0;
+  bgTextureUnmasked.needsUpdate = true;
+}
+
+function updateMainBg(w, h, offsetX, offsetY, drawW, drawH) {
+  bgCtx.fillStyle = config.bgColor;
+  bgCtx.fillRect(0, 0, w, h);
+  
+  bgCtx.globalAlpha = 1.0;
+  bgCtx.drawImage(bgImage, offsetX, offsetY, drawW, drawH);
+
+  const grad = bgCtx.createLinearGradient(0, 0, 0, h);
+  const color = new THREE.Color(config.bgColor);
+  const rgbaStrSolid = `rgba(${Math.round(color.r * 255)},${Math.round(color.g * 255)},${Math.round(color.b * 255)},1)`;
+  const rgbaStrTransparent = `rgba(${Math.round(color.r * 255)},${Math.round(color.g * 255)},${Math.round(color.b * 255)},${bgReflectionSettings.mainGradientOpacity})`;
+
+  grad.addColorStop(0, rgbaStrTransparent);
+  grad.addColorStop(0.5, rgbaStrSolid);
+  grad.addColorStop(1, rgbaStrSolid);
+
+  bgCtx.fillStyle = grad;
+  bgCtx.fillRect(0, 0, w, h);
+
+  bgTexture.needsUpdate = true;
+}
+
+function updateBgAspect() {
+  if (!bgImage.complete || bgImage.naturalWidth === 0) return;
+
+  if (bgCanvas.width !== window.innerWidth || bgCanvas.height !== window.innerHeight) {
+    bgCanvas.width = window.innerWidth;
+    bgCanvas.height = window.innerHeight;
+    bgCanvasUnmasked.width = window.innerWidth;
+    bgCanvasUnmasked.height = window.innerHeight;
+  }
+
+  const w = bgCanvas.width;
+  const h = bgCanvas.height;
+  const canvasAspect = w / h;
+  const imageAspect = bgImage.naturalWidth / bgImage.naturalHeight;
+  
+  let drawW = w;
+  let drawH = h;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (canvasAspect > imageAspect) {
+    drawH = w / imageAspect;
+    offsetY = (h - drawH) / 2;
+  } else {
+    drawW = h * imageAspect;
+    offsetX = (w - drawW) / 2;
+  }
+
+  updateReflectionBg(w, h, offsetX, offsetY, drawW, drawH);
+  updateMainBg(w, h, offsetX, offsetY, drawW, drawH);
+}
 
 // --- Gallery Postprocessing (Fisheye + Chromatic Aberration) ---
 const galleryComposer = new EffectComposer(renderer);
@@ -337,6 +461,70 @@ createScreens(scene);
 
 // Reflective Floor
 reflector = createFloor(scene);
+
+const fogWallSettings = {
+  opacity: 1.0,
+  gradStart: 1.0,
+  gradEnd: 0.0,
+  posY: 18.5
+};
+
+const fogWallGeom = new THREE.PlaneGeometry(100, 40);
+const fogWallMat = new THREE.ShaderMaterial({
+  uniforms: {
+    color: { value: new THREE.Color(config.bgColor) },
+    uOpacity: { value: fogWallSettings.opacity },
+    uGradStart: { value: fogWallSettings.gradStart },
+    uGradEnd: { value: fogWallSettings.gradEnd }
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 color;
+    uniform float uOpacity;
+    uniform float uGradStart;
+    uniform float uGradEnd;
+    varying vec2 vUv;
+    void main() {
+      // Fade out at the top to blend with background
+      float alpha = smoothstep(uGradStart, uGradEnd, vUv.y) * uOpacity;
+      gl_FragColor = vec4(color, alpha);
+      
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
+    }
+  `,
+  transparent: true,
+  depthWrite: false
+});
+const fogWall = new THREE.Mesh(fogWallGeom, fogWallMat);
+// The floor is at y = -1.5 and ends at z = -25. Place the wall just before the edge.
+fogWall.position.set(0, fogWallSettings.posY, -24.5); 
+scene.add(fogWall);
+
+// Hack to make the floor reflect the UNMASKED image and ignore the Fog Wall
+const originalOnBeforeRender = reflector.onBeforeRender;
+reflector.onBeforeRender = function (renderer, scene, camera) {
+  const oldBg = scene.background;
+  
+  // Use the unmasked texture for the reflection
+  scene.background = bgTextureUnmasked;
+  
+  // Hide the fog wall from the reflection
+  fogWall.visible = false;
+  
+  originalOnBeforeRender.call(this, renderer, scene, camera);
+  
+  // Restore the masked texture and the fog wall for the main camera
+  scene.background = oldBg;
+  fogWall.visible = true;
+};
+
 const floorColorObj = { color: 0xB16B3E };
 reflector.material.uniforms.color.value.setHex(floorColorObj.color);
 updateCameraZ(); // Update dynamic uniforms (e.g. fadeStrength) on load
@@ -458,7 +646,7 @@ window.addEventListener('enterGalleryScene', () => {
 window.addEventListener('exitGalleryScene', () => {
   // Garante que o botão mostre "Abrir" porque as telas vão fechar automaticamente
   setGlobalActionText('Abrir', 'toggleFold');
-  
+
   const logoEl = document.getElementById('top-logo');
   if (logoEl) gsap.to(logoEl, { opacity: 1, duration: 0.8, delay: 0.5 });
 });
@@ -490,7 +678,9 @@ const actions = {
         z: directionalLight.position.z
       },
       fog: { color: fogColorObj.color, near: scene.fog.near, far: scene.fog.far },
-      floor: { color: floorColorObj.color }
+      floor: { color: floorColorObj.color },
+      fogWallSettings: fogWallSettings,
+      bgReflectionSettings: bgReflectionSettings
     };
 
     // Converte de numero (ex: 16777215) para hex color string (ex: #ffffff) pra facilitar leitura
@@ -515,9 +705,10 @@ gui.add(actions, 'copySettings').name('💾 Copiar Configurações');
 
 // Theme settings
 const themeFolder = gui.addFolder('Cores do Site').close();
-themeFolder.addColor(config, 'bgColor').name('Fundo do Site').onChange(c => {
-  document.body.style.background = 'linear-gradient(to top, ' + c + ' 20%, #7d4422 100%)';
-  renderer.setClearColor(c, 1);
+themeFolder.addColor(config, 'bgColor').name('Cor da Névoa (Fog)').onChange(c => {
+  scene.fog.color.set(c);
+  fogWall.material.uniforms.color.value.set(c); // Update fog wall color
+  updateBgAspect();
 });
 
 // Animation & Scroll settings
@@ -639,12 +830,24 @@ lightFolder.add(directionalLight.position, 'z', -10, 10, 0.1).name('Posição Z'
 // Fog settings
 const fogFolder = gui.addFolder('Névoa (Fog)').close();
 fogFolder.addColor(fogColorObj, 'color').name('Cor da Névoa').onChange(c => scene.fog.color.setHex(c));
-fogFolder.add(fogSettings, 'baseNear', 1, 30, 0.1).name('Início').onChange(updateCameraZ);
-fogFolder.add(fogSettings, 'baseFar', 5, 80, 0.1).name('Fim').onChange(updateCameraZ);
+fogFolder.add(fogSettings, 'baseNear', 1, 30, 0.1).name('Início 3D').onChange(updateCameraZ);
+fogFolder.add(fogSettings, 'baseFar', 5, 80, 0.1).name('Fim 3D').onChange(updateCameraZ);
+
+// Controles da Parede de Fumaça (Fog Wall) e Fundo 2D
+fogFolder.add(bgReflectionSettings, 'mainGradientOpacity', 0, 1, 0.01).name('Fumaça do Fundo (2D)').onChange(updateBgAspect);
+fogFolder.add(fogWallSettings, 'opacity', 0, 1, 0.01).name('Opacidade Parede 3D').onChange(v => fogWall.material.uniforms.uOpacity.value = v);
+fogFolder.add(fogWallSettings, 'gradStart', 0, 2, 0.01).name('Gradiente Parede (Início)').onChange(v => fogWall.material.uniforms.uGradStart.value = v);
+fogFolder.add(fogWallSettings, 'gradEnd', -1, 2, 0.01).name('Gradiente Parede (Fim)').onChange(v => fogWall.material.uniforms.uGradEnd.value = v);
+fogFolder.add(fogWallSettings, 'posY', 10, 40, 0.5).name('Altura Y Parede').onChange(v => fogWall.position.y = v);
 
 // Floor settings
 const floorFolder = gui.addFolder('Piso / Reflexo (Água)').close();
 floorFolder.addColor(floorColorObj, 'color').name('Cor do Reflexo').onChange(c => reflector.material.uniforms.color.value.setHex(c));
+floorFolder.add(bgReflectionSettings, 'opacity', 0, 1, 0.01).name('Opacidade Refl. Fundo').onChange(() => {
+  if (bgImage.complete && bgImage.naturalWidth > 0) {
+    updateBgAspect(); // This will recalculate dimensions and update both safely
+  }
+});
 floorFolder.add(config, 'waveStrength', 0, 0.1, 0.001).name('Força da Onda');
 floorFolder.add(config, 'waveSpeed', 0, 5, 0.1).name('Velocidade da Onda');
 floorFolder.add(config, 'fadeStrengthDesktop', 0, 10, 0.01).name('Fade (Desktop)').onChange(updateCameraZ);
@@ -664,8 +867,12 @@ window.addEventListener('resize', () => {
   galleryComposer.setSize(width, height);
   updateCameraZ();
 
+  updateBgAspect();
+
   // Re-render immediately on resize
-  renderer.render(scene, camera);
+  if (window.activeScene === 'main') {
+    renderer.render(scene, camera);
+  }
 });
 
 // Start the animation loop
@@ -675,8 +882,6 @@ window.addEventListener('enterProjectGallery', (e) => {
   setTimeout(() => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', '#050505');
-    document.body.style.background = '#050505';
-    document.documentElement.style.backgroundColor = '#050505';
   }, 1000);
 
   gsap.to(camera.position, {
@@ -707,8 +912,6 @@ window.addEventListener('exitGalleryScene', (e) => {
   setTimeout(() => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', config.bgColor);
-    document.body.style.background = config.bgColor;
-    document.documentElement.style.backgroundColor = config.bgColor;
   }, 1000);
 
   const transitionLayer = document.getElementById('transition-layer');
@@ -741,7 +944,7 @@ window.addEventListener('exitGalleryScene', (e) => {
       gsap.to(transitionLayer, {
         opacity: 0, duration: 1, onComplete: () => {
           transitionLayer.style.display = 'none';
-          
+
           // Dispara a animação de fechar somente DEPOIS que a tela clarear
           if (!isFolded) {
             toggleFold();

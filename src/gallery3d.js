@@ -166,7 +166,7 @@ galleryScene.add(bgGrid);
 
 
 const cols = 5;
-const rows = 3;
+const rows = 5;
 const isMobile = window.innerWidth < 768;
 const itemWidth = isMobile ? window.innerWidth * 0.6 : 300;
 const itemHeight = isMobile ? window.innerWidth * 0.6 : 300;
