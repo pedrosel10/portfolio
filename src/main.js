@@ -258,7 +258,7 @@ scene.add(camera);
 // --- Renderer Setup ---
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // optimize pixel ratio
+renderer.setPixelRatio(window.devicePixelRatio); // maximum quality
 renderer.toneMapping = THREE.NoToneMapping;
 scene.environmentIntensity = 1.2; // Aumentado para dar mais brilho ao HDRI sem acinzentar o chão
 renderer.shadowMap.enabled = true;
