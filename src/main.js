@@ -834,6 +834,13 @@ window.addEventListener('enterProjectGallery', (e) => {
 
   const transitionLayer = document.getElementById('transition-layer');
   transitionLayer.style.display = 'block';
+
+  // Altera a cor do Safari/navegador para escuro no meio da transição
+  setTimeout(() => {
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute('content', '#050505');
+  }, 1000);
+
   gsap.to(transitionLayer, {
     opacity: 1,
     duration: 1,
