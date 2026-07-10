@@ -18,24 +18,13 @@ window.activeScene = 'main';
 let introComplete = false;
 let isIntroLocked = false;
 const introState = { fogFade: 1 };
-const fogWallSettings = {
-  opacity: 0.0,
-  gradStart: 1.0,
-  gradEnd: 0.0,
-  posY: 18.5
-};
-let fogWall = null;
 
 function setCameraToIntroState() {
   introComplete = false;
   introState.fogFade = 0;
   if (typeof updateBgAspect === 'function') updateBgAspect(); // Esconde o fundo imediatamente
 
-  // Fog wall starts completely opaque
-  fogWallSettings.opacity = 1.0;
-  if (fogWall) {
-    fogWall.material.uniforms.uOpacity.value = 1.0;
-  }
+
 
   const aspect = window.innerWidth / window.innerHeight;
   let targetZ = cameraSettings.baseZ;
@@ -61,8 +50,10 @@ function setCameraToIntroState() {
   );
 
   if (scene.fog) {
-    scene.fog.near = fogSettings.baseNear + 100;
-    scene.fog.far = fogSettings.baseFar + 100;
+    const dist = camera.position.length();
+    const extraDist = (1 - introState.fogFade) * 5;
+    scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
+    scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
   }
 }
 
@@ -91,10 +82,10 @@ function playIntroAnimation() {
     ease: 'power3.inOut',
     onUpdate: () => {
       if (scene.fog) {
-        const zDiff = camera.position.z - cameraSettings.baseZ;
-        const extraDist = (1 - introState.fogFade) * 100;
-        scene.fog.near = fogSettings.baseNear + zDiff + extraDist;
-        scene.fog.far = fogSettings.baseFar + zDiff + extraDist;
+        const dist = camera.position.length();
+        const extraDist = (1 - introState.fogFade) * 5;
+        scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
+        scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
       }
     }
   });
@@ -106,18 +97,6 @@ function playIntroAnimation() {
     onComplete: () => {
       introComplete = true;
 
-      // Fade out the fog wall from 100% to 0%
-      gsap.to(fogWallSettings, {
-        opacity: 0.0,
-        duration: 1.5,
-        ease: 'power2.inOut',
-        onUpdate: () => {
-          if (fogWall) {
-            fogWall.material.uniforms.uOpacity.value = fogWallSettings.opacity;
-          }
-        }
-      });
-
       // Fade in the background and push back the 3D fog
       gsap.to(introState, {
         fogFade: 1,
@@ -126,21 +105,18 @@ function playIntroAnimation() {
         onUpdate: () => {
           updateBgAspect();
           if (scene.fog) {
-            const zDiff = camera.position.z - cameraSettings.baseZ;
-            const extraDist = (1 - introState.fogFade) * 100;
-            scene.fog.near = fogSettings.baseNear + zDiff + extraDist;
-            scene.fog.far = fogSettings.baseFar + zDiff + extraDist;
+            const dist = camera.position.length();
+            const extraDist = (1 - introState.fogFade) * 5;
+            scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
+            scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
+          }
+          if (reflector) {
+            reflector.material.uniforms.globalOpacity.value = introState.fogFade;
           }
         }
       });
 
-      if (reflector) {
-        gsap.to(reflector.material.uniforms.globalOpacity, {
-          value: 1.0,
-          duration: 1.5,
-          ease: 'power2.inOut'
-        });
-      }
+      // reflector opacity is now updated in the introState onUpdate loop
       frontTextMeshes.forEach(mesh => {
         gsap.to(mesh.material, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
       });
@@ -232,8 +208,8 @@ const fogSettings = { baseNear: 7, baseFar: 15 };
 
 // Background is transparent to show the HTML text behind it
 // Fog can help fade the reflection
-scene.fog = new THREE.Fog('#B16B3E', fogSettings.baseNear, fogSettings.baseFar);
-const fogColorObj = { color: '#B16B3E' };
+scene.fog = new THREE.Fog(config.bgColor, fogSettings.baseNear, fogSettings.baseFar);
+const fogColorObj = { color: config.bgColor };
 
 let reflector = null; // Declare here to avoid Temporal Dead Zone (TDZ)
 
@@ -267,10 +243,10 @@ function updateCameraZ() {
 
   // Prevent fog from swallowing the scene by pushing it back by the same amount
   if (scene.fog) {
-    const zDiff = camera.position.z - cameraSettings.baseZ;
-    const extraDist = (1 - introState.fogFade) * 100;
-    scene.fog.near = fogSettings.baseNear + zDiff + extraDist;
-    scene.fog.far = fogSettings.baseFar + zDiff + extraDist;
+    const dist = camera.position.length();
+    const extraDist = (1 - introState.fogFade) * 5;
+    scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
+    scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
   }
 }
 updateCameraZ(); // Initial call
@@ -323,31 +299,12 @@ setCameraToIntroState();
 function updateReflectionBg(w, h, offsetX, offsetY, drawW, drawH) {
   bgCtxUnmasked.fillStyle = config.bgColor;
   bgCtxUnmasked.fillRect(0, 0, w, h);
-  bgCtxUnmasked.globalAlpha = bgReflectionSettings.opacity * introState.fogFade;
-  bgCtxUnmasked.drawImage(bgImage, offsetX, offsetY, drawW, drawH);
-  bgCtxUnmasked.globalAlpha = 1.0;
   bgTextureUnmasked.needsUpdate = true;
 }
 
 function updateMainBg(w, h, offsetX, offsetY, drawW, drawH) {
   bgCtx.fillStyle = config.bgColor;
   bgCtx.fillRect(0, 0, w, h);
-  
-  bgCtx.globalAlpha = introState.fogFade;
-  bgCtx.drawImage(bgImage, offsetX, offsetY, drawW, drawH);
-
-  const grad = bgCtx.createLinearGradient(0, 0, 0, h);
-  const color = new THREE.Color(config.bgColor);
-  const rgbaStrSolid = `rgba(${Math.round(color.r * 255)},${Math.round(color.g * 255)},${Math.round(color.b * 255)},1)`;
-  const rgbaStrTransparent = `rgba(${Math.round(color.r * 255)},${Math.round(color.g * 255)},${Math.round(color.b * 255)},${bgReflectionSettings.mainGradientOpacity})`;
-
-  grad.addColorStop(0, rgbaStrTransparent);
-  grad.addColorStop(0.5, rgbaStrSolid);
-  grad.addColorStop(1, rgbaStrSolid);
-
-  bgCtx.fillStyle = grad;
-  bgCtx.fillRect(0, 0, w, h);
-
   bgTexture.needsUpdate = true;
 }
 
@@ -501,45 +458,6 @@ createScreens(scene);
 // Reflective Floor
 reflector = createFloor(scene);
 
-// moved fogWallSettings to top of file
-
-const fogWallGeom = new THREE.PlaneGeometry(100, 40);
-const fogWallMat = new THREE.ShaderMaterial({
-  uniforms: {
-    color: { value: new THREE.Color(config.bgColor) },
-    uOpacity: { value: fogWallSettings.opacity },
-    uGradStart: { value: fogWallSettings.gradStart },
-    uGradEnd: { value: fogWallSettings.gradEnd }
-  },
-  vertexShader: `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform vec3 color;
-    uniform float uOpacity;
-    uniform float uGradStart;
-    uniform float uGradEnd;
-    varying vec2 vUv;
-    void main() {
-      // Fade out at the top to blend with background
-      float alpha = smoothstep(uGradStart, uGradEnd, vUv.y) * uOpacity;
-      gl_FragColor = vec4(color, alpha);
-      
-      #include <tonemapping_fragment>
-      #include <colorspace_fragment>
-    }
-  `,
-  transparent: true,
-  depthWrite: false
-});
-fogWall = new THREE.Mesh(fogWallGeom, fogWallMat);
-// The floor is at y = -1.5 and ends at z = -25. Place the wall just before the edge.
-fogWall.position.set(0, fogWallSettings.posY, -24.5); 
-scene.add(fogWall);
 
 // Hack to make the floor reflect the UNMASKED image and ignore the Fog Wall
 const originalOnBeforeRender = reflector.onBeforeRender;
@@ -549,17 +467,13 @@ reflector.onBeforeRender = function (renderer, scene, camera) {
   // Use the unmasked texture for the reflection
   scene.background = bgTextureUnmasked;
   
-  // Hide the fog wall from the reflection
-  fogWall.visible = false;
-  
   originalOnBeforeRender.call(this, renderer, scene, camera);
   
-  // Restore the masked texture and the fog wall for the main camera
+  // Restore the masked texture for the main camera
   scene.background = oldBg;
-  fogWall.visible = true;
 };
 
-const floorColorObj = { color: 0xB16B3E };
+const floorColorObj = { color: new THREE.Color(config.bgColor).getHex() };
 reflector.material.uniforms.color.value.setHex(floorColorObj.color);
 updateCameraZ(); // Update dynamic uniforms (e.g. fadeStrength) on load
 
@@ -713,7 +627,6 @@ const actions = {
       },
       fog: { color: fogColorObj.color, near: scene.fog.near, far: scene.fog.far },
       floor: { color: floorColorObj.color },
-      fogWallSettings: fogWallSettings,
       bgReflectionSettings: bgReflectionSettings
     };
 
@@ -741,7 +654,6 @@ gui.add(actions, 'copySettings').name('💾 Copiar Configurações');
 const themeFolder = gui.addFolder('Cores do Site').close();
 themeFolder.addColor(config, 'bgColor').name('Cor da Névoa (Fog)').onChange(c => {
   scene.fog.color.set(c);
-  fogWall.material.uniforms.color.value.set(c); // Update fog wall color
   updateBgAspect();
 });
 
@@ -869,10 +781,6 @@ fogFolder.add(fogSettings, 'baseFar', 5, 80, 0.1).name('Fim 3D').onChange(update
 
 // Controles da Parede de Fumaça (Fog Wall) e Fundo 2D
 fogFolder.add(bgReflectionSettings, 'mainGradientOpacity', 0, 1, 0.01).name('Fumaça do Fundo (2D)').onChange(updateBgAspect);
-fogFolder.add(fogWallSettings, 'opacity', 0, 1, 0.01).name('Opacidade Parede 3D').onChange(v => fogWall.material.uniforms.uOpacity.value = v);
-fogFolder.add(fogWallSettings, 'gradStart', 0, 2, 0.01).name('Gradiente Parede (Início)').onChange(v => fogWall.material.uniforms.uGradStart.value = v);
-fogFolder.add(fogWallSettings, 'gradEnd', -1, 2, 0.01).name('Gradiente Parede (Fim)').onChange(v => fogWall.material.uniforms.uGradEnd.value = v);
-fogFolder.add(fogWallSettings, 'posY', 10, 40, 0.5).name('Altura Y Parede').onChange(v => fogWall.position.y = v);
 
 // Floor settings
 const floorFolder = gui.addFolder('Piso / Reflexo (Água)').close();

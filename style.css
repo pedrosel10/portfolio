@@ -21,7 +21,7 @@ body {
   height: 100vh;
   overflow: hidden;
   /* Hide scrollbars as we will use wheel events manually */
-  background-color: #B16B3E;
+  background-color: #F8F2EB;
   font-family: 'Playfair Display', serif;
   user-select: none;
 }
@@ -107,6 +107,7 @@ canvas {
 
 /* --- RETRO TV EFFECT --- */
 #tv-noise {
+  display: none;
   position: fixed;
   top: 0;
   left: 0;

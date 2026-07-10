@@ -1,6 +1,6 @@
 export const config = {
   // Theme
-  bgColor: "#B16B3E",
+  bgColor: "#F8F2EB",
   hdriSaturation: 1,
 
   // Animation
