@@ -824,6 +824,7 @@ window.addEventListener('enterProjectGallery', (e) => {
   setTimeout(() => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', '#050505');
+    document.body.style.backgroundColor = '#050505';
   }, 1000);
 
   gsap.to(camera.position, {
@@ -835,11 +836,7 @@ window.addEventListener('enterProjectGallery', (e) => {
   const transitionLayer = document.getElementById('transition-layer');
   transitionLayer.style.display = 'block';
 
-  // Altera a cor do Safari/navegador para escuro no meio da transição
-  setTimeout(() => {
-    const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeMeta) themeMeta.setAttribute('content', '#050505');
-  }, 1000);
+
 
   gsap.to(transitionLayer, {
     opacity: 1,
@@ -861,6 +858,7 @@ window.addEventListener('exitGalleryScene', (e) => {
   setTimeout(() => {
     const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (themeMeta) themeMeta.setAttribute('content', config.bgColor);
+    document.body.style.backgroundColor = config.bgColor;
   }, 1000);
 
   const transitionLayer = document.getElementById('transition-layer');
