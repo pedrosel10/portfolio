@@ -5,10 +5,11 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createScreens, screensGroup, toggleFold, updateScreens, panelsDataObj, frontTextMeshes, isFolded, updateFrontTextOffset } from './screens.js';
-import { galleryScene, galleryCamera } from './gallery3d.js';
+import { galleryScene, galleryCamera, initBrandParticles } from './gallery3d.js';
 import { createFloor } from './floor.js';
 import { initScroll } from './scroll.js';
 import { initMouse } from './mouse.js';
+import { initBioParticles, startBioParticles, stopBioParticles } from './bioParticles.js';
 import GUI from 'lil-gui';
 import { config } from './config.js';
 import gsap from 'gsap';
@@ -120,9 +121,9 @@ function playIntroAnimation() {
       frontTextMeshes.forEach(mesh => {
         gsap.to(mesh.material, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
       });
-      const logoEl = document.getElementById('top-logo');
-      if (logoEl) {
-        gsap.to(logoEl, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
+      const headerEl = document.getElementById('top-header-container') || document.getElementById('top-logo');
+      if (headerEl) {
+        gsap.to(headerEl, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
       }
       const btnEl = document.getElementById('global-action-btn');
       if (btnEl) {
@@ -478,6 +479,10 @@ reflector.material.uniforms.color.value.setHex(floorColorObj.color);
 updateCameraZ(); // Update dynamic uniforms (e.g. fadeStrength) on load
 
 // --- Interactions ---
+setTimeout(() => {
+  initBioParticles();
+  initBrandParticles();
+}, 4000); // Wait for the initial animation to finish to avoid lag spikes
 initScroll();
 initMouse(scene, camera, screensGroup);
 
@@ -500,6 +505,8 @@ if (globalBtn) {
       window.dispatchEvent(new CustomEvent('exitGalleryScene'));
     } else if (currentActionType === 'exitProject') {
       window.dispatchEvent(new CustomEvent('exitProjectGallery'));
+    } else if (currentActionType === 'closeBioFold') {
+      closeBioFold();
     }
   });
 }
@@ -588,15 +595,126 @@ window.addEventListener('exitProjectGallery', () => {
 });
 window.addEventListener('enterGalleryScene', () => {
   setGlobalActionText('Voltar', 'exitGallery');
-  const logoEl = document.getElementById('top-logo');
-  if (logoEl) gsap.to(logoEl, { opacity: 0, duration: 0.8 });
+  const headerEl = document.getElementById('top-header-container') || document.getElementById('top-logo');
+  if (headerEl) gsap.to(headerEl, { opacity: 0, duration: 0.8 });
 });
 window.addEventListener('exitGalleryScene', () => {
   // Garante que o botão mostre "Abrir" porque as telas vão fechar automaticamente
   setGlobalActionText('Abrir', 'toggleFold');
 
-  const logoEl = document.getElementById('top-logo');
-  if (logoEl) gsap.to(logoEl, { opacity: 1, duration: 0.8, delay: 0.5 });
+  const headerEl = document.getElementById('top-header-container') || document.getElementById('top-logo');
+  if (headerEl) gsap.to(headerEl, { opacity: 1, duration: 0.8, delay: 0.5 });
+});
+
+// --- Bio Fold Interactions with SVG ClipPath Strips ---
+const subtitleBtn = document.getElementById('top-subtitle-btn');
+const bioOverlay = document.getElementById('bio-fold-overlay');
+const bioCard = document.querySelector('.bio-fold-card');
+const bioStrips = document.querySelectorAll('.svg-strip');
+
+let isBioFoldAnimating = false;
+
+function openBioFold() {
+  if (!bioOverlay || isBioFoldAnimating) return;
+  isBioFoldAnimating = true;
+
+  bioOverlay.classList.add('active');
+  startBioParticles(); // Começa a renderizar atmosfera 3D e post-processing
+  
+  setGlobalActionText('Fechar', 'closeBioFold');
+
+  // Reset positions
+  gsap.set(bioStrips, { attr: { y: 1 } });
+  gsap.set(bioCard, { opacity: 0, translateY: '20px' });
+
+  // Animate 7 vertical strips from center (index 3) outwards
+  bioStrips.forEach((strip, i) => {
+    const distFromCenter = Math.abs(i - 3);
+    gsap.to(strip, {
+      attr: { y: 0 },
+      duration: 0.65,
+      ease: 'power3.out',
+      delay: distFromCenter * 0.07
+    });
+  });
+
+  // Reveal the text content card
+  gsap.to(bioCard, {
+    opacity: 1,
+    translateY: '0px',
+    duration: 0.6,
+    ease: 'power2.out',
+    delay: 0.32,
+    onComplete: () => {
+      isBioFoldAnimating = false;
+    }
+  });
+}
+
+function closeBioFold() {
+  if (!bioOverlay || !bioOverlay.classList.contains('active') || isBioFoldAnimating) return;
+  isBioFoldAnimating = true;
+
+  setGlobalActionText(isFolded ? 'Fechar' : 'Abrir', 'toggleFold');
+
+  // Fade out card content first
+  gsap.to(bioCard, {
+    opacity: 0,
+    translateY: '-20px',
+    duration: 0.25,
+    ease: 'power2.in'
+  });
+
+  // Animate strips up (y: -1) starting from center
+  let maxDelay = 0;
+  bioStrips.forEach((strip, i) => {
+    const distFromCenter = Math.abs(i - 3);
+    const delay = distFromCenter * 0.06;
+    if (delay > maxDelay) maxDelay = delay;
+
+    gsap.to(strip, {
+      attr: { y: -1 },
+      duration: 0.55,
+      ease: 'power3.in',
+      delay: 0.1 + delay
+    });
+  });
+
+  // After all strips exit, remove active class and reset positions
+  gsap.delayedCall(0.1 + maxDelay + 0.55, () => {
+    bioOverlay.classList.remove('active');
+    stopBioParticles();
+    gsap.set(bioStrips, { attr: { y: 1 } });
+    gsap.set(bioCard, { opacity: 0, translateY: '20px' });
+    isBioFoldAnimating = false;
+  });
+}
+
+if (subtitleBtn) {
+  subtitleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openBioFold();
+  });
+}
+
+if (bioOverlay) {
+  bioOverlay.addEventListener('click', (e) => {
+    if (e.target === bioOverlay || e.target.classList.contains('bio-strips-wrapper')) {
+      closeBioFold();
+    }
+  });
+}
+
+if (bioCard) {
+  bioCard.addEventListener('pointerdown', (e) => e.stopPropagation());
+  bioCard.addEventListener('pointerup', (e) => e.stopPropagation());
+  bioCard.addEventListener('click', (e) => e.stopPropagation());
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && bioOverlay && bioOverlay.classList.contains('active')) {
+    closeBioFold();
+  }
 });
 
 // --- GUI Setup ---

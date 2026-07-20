@@ -22,7 +22,7 @@ body {
   overflow: hidden;
   /* Hide scrollbars as we will use wheel events manually */
   background-color: #F8F2EB;
-  font-family: 'Playfair Display', serif;
+  font-family: 'Space Grotesk', sans-serif;
   user-select: none;
 }
 
@@ -65,20 +65,345 @@ canvas {
   }
 }
 
-#top-logo {
+#top-header-container {
   position: fixed;
-  top: 40px;
+  top: 32px;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+#top-logo {
   font-family: 'CooperLtBT', serif;
   font-size: 14px;
   letter-spacing: 8px;
   color: #111;
-  z-index: 10000;
-  pointer-events: none;
   display: flex;
   gap: 4px;
+  user-select: none;
+}
+
+#top-subtitle-btn {
+  background: transparent;
+  border: none;
+  padding: 2px 8px;
+  margin: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #444;
+  transition: color 0.2s ease, transform 0.2s ease;
+  outline: none;
+  border-radius: 12px;
+}
+
+#top-subtitle-btn:hover {
+  color: #000;
+}
+
+#top-subtitle-btn:active {
+  transform: scale(0.96);
+}
+
+.subtitle-text {
+  font-family: 'CooperLtBT', serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+
+.setinha-icon {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+#top-subtitle-btn:hover .setinha-icon {
+  transform: translateX(3px);
+}
+
+/* --- BIO FOLD FULLSCREEN OVERLAY (#F8F2EB) WITH STAGGERED VERTICAL STRIPS --- */
+.bio-fold-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10002;
+  pointer-events: none;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bio-fold-overlay.active {
+  pointer-events: auto;
+}
+
+/* 7 Vertical Strips Container */
+.bio-strips-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bio-strip {
+  flex: 1;
+  height: 100%;
+  background-color: #0d0d0d;
+  transform: translateY(100%);
+  will-change: transform;
+}
+
+/* Fullscreen Content Card */
+.bio-fold-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  max-width: 900px;
+  padding: 80px 40px 60px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   opacity: 0;
+  transform: translateY(20px);
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.bio-fold-overlay.active .bio-fold-card {
+  pointer-events: auto;
+}
+
+#bio-fold-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1; /* Behind content */
+  pointer-events: none; /* Let scroll events pass through to card */
+}
+
+.bio-fold-close {
+  position: fixed;
+  top: 32px;
+  right: 32px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #F8F2EB;
+  transition: background 0.2s ease, transform 0.2s ease;
+  outline: none;
+}
+
+.bio-fold-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.08);
+}
+
+.bio-fold-close:active {
+  transform: scale(0.92);
+}
+
+.bio-fold-content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto 0;
+}
+
+.bio-badge {
+  font-family: 'CooperLtBT', serif;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.bio-title {
+  font-family: 'CooperLtBT', serif;
+  font-size: clamp(48px, 7.5vw, 108px);
+  color: #F8F2EB;
+  margin-bottom: 40px;
+  font-weight: normal;
+  letter-spacing: -1.5px;
+  line-height: 1.05;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.bio-title-line {
+  display: block;
+}
+
+.handwritten-wrapper {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.base-name {
+  position: relative;
+  z-index: 1;
+}
+
+.handwritten-svg {
+  position: absolute;
+  top: 46%;
+  left: 45%;
+  width: 3.4em;
+  height: auto;
+  transform: translate(-50%, -46%) rotate(-2deg);
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
+  filter: drop-shadow(0 4px 14px rgba(226, 97, 85, 0.45));
+}
+
+.pedro-letter {
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+  transition: clip-path 0.35s cubic-bezier(0.25, 1, 0.5, 1),
+              opacity 0.2s ease;
+  will-change: clip-path, opacity;
+}
+
+.letter-p { transition-delay: 0.45s, 0.45s; }
+.letter-e { transition-delay: 0.68s, 0.68s; }
+.letter-d { transition-delay: 0.88s, 0.88s; }
+.letter-r { transition-delay: 1.08s, 1.08s; }
+.letter-o { transition-delay: 1.28s, 1.28s; }
+
+.bio-fold-overlay.active .pedro-letter {
+  clip-path: inset(0 0% 0 0);
+  opacity: 1;
+}
+
+.bio-paragraph {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: #dcd6cd;
+  margin-bottom: 24px;
+  max-width: 580px;
+  font-weight: 300;
+  text-align: left;
+}
+
+/* Bullet Points / Especialidades */
+.bio-skills-container {
+  margin-top: 28px;
+  width: 100%;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bio-skills-title {
+  font-family: 'CooperLtBT', serif;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #888888;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.bio-skills-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px 14px;
+  max-width: 620px;
+}
+
+.bio-skill-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 40px;
+  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  user-select: none;
+}
+
+.bio-skill-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.bullet-icon {
+  font-size: 6px;
+  color: rgba(248, 242, 235, 0.4);
+  line-height: 1;
+}
+
+.skill-label {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  color: rgba(248, 242, 235, 0.85);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+@media (max-width: 768px) {
+  .bio-title {
+    font-size: 56px;
+    margin-bottom: 24px;
+    line-height: 1.05;
+  }
+  .bio-paragraph {
+    margin-bottom: 18px;
+  }
+  .bio-fold-card {
+    padding: 70px 24px 40px 24px;
+  }
+  .bio-skills-list {
+    gap: 8px 10px;
+  }
+  .bio-skill-item {
+    padding: 8px 16px;
+  }
 }
 
 .slot-column {
@@ -174,5 +499,26 @@ canvas {
 
   100% {
     transform: translate(-1%, -2%);
+  }
+}
+
+@media (max-width: 768px) {
+  .bio-fold-content {
+    width: 300px;
+    align-items: flex-start;
+  }
+  .bio-title {
+    width: 100%;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .bio-paragraph {
+    width: 100%;
+  }
+  .bio-skills-container {
+    align-items: flex-start;
+  }
+  .bio-skills-list {
+    justify-content: flex-start;
   }
 }
