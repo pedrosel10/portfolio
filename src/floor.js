@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 
-export function createFloor(scene) {
+export function createFloor(scene, isMobile = false) {
   const floorGeometry = new THREE.PlaneGeometry(50, 50);
 
   // Clone the default shader to inject water distortion
@@ -84,10 +84,13 @@ uniform float globalOpacity;`
     'void main() {\n\tvLocalUv = uv;'
   );
 
+  // Lower resolution on mobile to save GPU bandwidth
+  const reflectorRes = isMobile ? 256 : 512;
+
   const reflector = new Reflector(floorGeometry, {
     clipBias: 0.003,
-    textureWidth: 512,
-    textureHeight: 512,
+    textureWidth: reflectorRes,
+    textureHeight: reflectorRes,
     color: 0xffffff, // White tint to blend with background
     shader: customShader
   });

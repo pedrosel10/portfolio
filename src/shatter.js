@@ -63,8 +63,9 @@ export function setupShatterInteraction(mesh, group) {
       }
     });
 
-    // Wire up close button
+    // Wire up close button (guard against missing element)
     const closeBtn = document.getElementById('close-portfolio');
+    if (!closeBtn) return;
     closeBtn.onclick = () => {
       if (isTransitioning) return;
       isTransitioning = true;

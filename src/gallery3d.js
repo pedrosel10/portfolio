@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import gsap from 'gsap';
+import { state } from './state.js';
 
 export const galleryScene = new THREE.Scene();
 galleryScene.background = new THREE.Color('#050505');
@@ -295,8 +296,8 @@ window.addEventListener('exitProjectGallery', () => {
   if (!isProjectOpen) return;
   
   // Reset color of clicked mesh instantly
-  if (window.clickedMesh) {
-    window.clickedMesh.material.color.setRGB(1, 1, 1);
+  if (state.clickedMesh) {
+    state.clickedMesh.material.color.setRGB(1, 1, 1);
   }
   
   // Fade out detail meshes
@@ -304,7 +305,7 @@ window.addEventListener('exitProjectGallery', () => {
   
   // Fade in grid meshes
   gridMeshes.forEach(m => {
-    if (m !== window.clickedMesh) {
+    if (m !== state.clickedMesh) {
       gsap.to(m.material, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
     }
   });
@@ -321,8 +322,8 @@ window.addEventListener('exitProjectGallery', () => {
       detailGroup.position.y = animObj.scrollY;
       
       // Update clicked mesh position to stay with detail group
-      if (window.clickedMesh) {
-        window.clickedMesh.position.y = window.clickedMesh.userData.currentY + animObj.scrollY;
+      if (state.clickedMesh) {
+        state.clickedMesh.position.y = state.clickedMesh.userData.currentY + animObj.scrollY;
       }
       
       // Update camera zoom
@@ -353,7 +354,7 @@ window.addEventListener('exitProjectGallery', () => {
 });
 
 window.addEventListener('pointerdown', (e) => {
-  if (window.activeScene !== 'gallery') return;
+  if (state.activeScene !== 'gallery') return;
   isPointerDown = true;
   isDraggingGallery = false;
   pointerStartX = e.clientX;
@@ -361,7 +362,7 @@ window.addEventListener('pointerdown', (e) => {
 });
 
 window.addEventListener('pointermove', (e) => {
-  if (window.activeScene !== 'gallery') return;
+  if (state.activeScene !== 'gallery') return;
   
   // Handle hover effect
   mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -392,8 +393,8 @@ window.addEventListener('pointermove', (e) => {
     const maxScroll = currentProjectImagesLength * spacing;
     projectScrollY = Math.max(0, Math.min(projectScrollY, maxScroll));
     detailGroup.position.y = projectScrollY;
-    if (window.clickedMesh) {
-      window.clickedMesh.position.y = window.clickedMesh.userData.currentY + projectScrollY;
+    if (state.clickedMesh) {
+      state.clickedMesh.position.y = state.clickedMesh.userData.currentY + projectScrollY;
     }
     // Update parallax
     bgGridMat.uniforms.uOffset.value.set(
@@ -407,7 +408,7 @@ window.addEventListener('pointermove', (e) => {
 });
 
 window.addEventListener('wheel', (e) => {
-  if (window.activeScene !== 'gallery') return;
+  if (state.activeScene !== 'gallery') return;
   
   if (!isProjectOpen) {
     offsetX -= e.deltaX;
@@ -418,8 +419,8 @@ window.addEventListener('wheel', (e) => {
     const maxScroll = currentProjectImagesLength * spacing;
     projectScrollY = Math.max(0, Math.min(projectScrollY, maxScroll));
     detailGroup.position.y = projectScrollY;
-    if (window.clickedMesh) {
-      window.clickedMesh.position.y = window.clickedMesh.userData.currentY + projectScrollY;
+    if (state.clickedMesh) {
+      state.clickedMesh.position.y = state.clickedMesh.userData.currentY + projectScrollY;
     }
     // Update parallax
     bgGridMat.uniforms.uOffset.value.set(
@@ -430,7 +431,7 @@ window.addEventListener('wheel', (e) => {
 });
 
 window.addEventListener('pointerup', (e) => {
-  if (window.activeScene !== 'gallery') return;
+  if (state.activeScene !== 'gallery') return;
   isPointerDown = false;
   
   // Update mouse coordinates on pointerup so that simple taps on mobile
@@ -454,7 +455,7 @@ window.addEventListener('pointerup', (e) => {
 
 function openProject(clickedMesh) {
   isProjectOpen = true;
-  window.clickedMesh = clickedMesh;
+  state.clickedMesh = clickedMesh;
   
   // Tell main to update the global button to close project mode
   window.dispatchEvent(new CustomEvent('openProjectDetail'));

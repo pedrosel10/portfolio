@@ -1,6 +1,7 @@
 import gsap from 'gsap';
 import { isFolded, isTransitioning, scrollState, S } from './screens.js';
 import { config } from './config.js';
+import { state } from './state.js';
 
 export function initScroll() {
   let isScrolling = false;
@@ -9,7 +10,7 @@ export function initScroll() {
   const anglePerPanel = (120 * Math.PI) / 180; // 120 degrees
   
   window.addEventListener('wheel', (e) => {
-    if (window.activeScene && window.activeScene !== 'main') return;
+    if (state.activeScene && state.activeScene !== 'main') return;
     if (isTransitioning) return;
     if (isFolded) {
       // Cylinder mode
@@ -79,7 +80,7 @@ export function initScroll() {
   let lastDragTime = 0;
 
   window.addEventListener('pointerdown', (e) => {
-    if (window.activeScene && window.activeScene !== 'main') return;
+    if (state.activeScene && state.activeScene !== 'main') return;
     if (isTransitioning) return;
     // Only capture if on the canvas (app container) to prevent interfering with UI
     if (e.target.tagName !== 'CANVAS') return;
@@ -90,7 +91,7 @@ export function initScroll() {
   });
 
   window.addEventListener('pointermove', (e) => {
-    if (window.activeScene && window.activeScene !== 'main') {
+    if (state.activeScene && state.activeScene !== 'main') {
       isDragging = false;
       return;
     }
@@ -111,23 +112,11 @@ export function initScroll() {
     const dragSens = 0.006;
     
     if (isFolded) {
-      // Cylinder mode
-      // Dragging left (deltaX < 0) means rotating left (angle decreases)
+      // Cylinder mode — direct assignment for immediate 1:1 response
       scrollState.angle += deltaX * dragSens;
-      // Animate with 0 duration for immediate 1:1 response
-      gsap.to(scrollState, {
-        angle: scrollState.angle,
-        duration: 0,
-        overwrite: 'auto'
-      });
     } else {
-      // Flat panorama mode
-      scrollState.offsetX += deltaX * dragSens * 5; // Corrigida a direção invertida (+ em vez de -)
-      gsap.to(scrollState, {
-        offsetX: scrollState.offsetX,
-        duration: 0,
-        overwrite: 'auto'
-      });
+      // Flat panorama mode — direct assignment for immediate 1:1 response
+      scrollState.offsetX += deltaX * dragSens * 5;
     }
     
     lastPointerX = e.clientX;
@@ -135,7 +124,7 @@ export function initScroll() {
   });
 
   const endDrag = () => {
-    if (window.activeScene && window.activeScene !== 'main') return;
+    if (state.activeScene && state.activeScene !== 'main') return;
     if (!isDragging) return;
     isDragging = false;
     

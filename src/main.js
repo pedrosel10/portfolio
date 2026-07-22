@@ -9,11 +9,9 @@ import { galleryScene, galleryCamera } from './gallery3d.js';
 import { createFloor } from './floor.js';
 import { initScroll } from './scroll.js';
 import { initMouse } from './mouse.js';
-import GUI from 'lil-gui';
 import { config } from './config.js';
+import { state } from './state.js';
 import gsap from 'gsap';
-
-window.activeScene = 'main';
 
 let introComplete = false;
 let isIntroLocked = false;
@@ -286,7 +284,7 @@ scene.add(camera);
 // --- Renderer Setup ---
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio); // maximum quality
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap at 2x to avoid 9x pixel overhead on 3x Retina
 renderer.toneMapping = THREE.NoToneMapping;
 scene.environmentIntensity = 1.2; // Aumentado para dar mais brilho ao HDRI sem acinzentar o chão
 renderer.shadowMap.enabled = true;
@@ -484,7 +482,8 @@ scene.add(directionalLight);
 createScreens(scene);
 
 // Reflective Floor
-reflector = createFloor(scene);
+// Reflective Floor (lower resolution on mobile)
+reflector = createFloor(scene, window.innerWidth < 768);
 
 
 // Hack to make the floor reflect the UNMASKED image and ignore the Fog Wall
@@ -1058,203 +1057,189 @@ window.addEventListener('exitGalleryScene', () => {
   gsap.to([logoEl, authorInfoEl], { y: 0, xPercent: -50, x: 0, opacity: 1, duration: 0.8, delay: 0.5, ease: 'power3.inOut' });
 });
 
-// --- GUI Setup ---
-const gui = new GUI({ title: 'Configurações do Ambiente' });
-gui.hide();
+// --- GUI Setup (dev only — saves ~20KB in production) ---
+const actions = { useHDRI: true };
 
-// Prevent clicks on the GUI from triggering 3D raycaster
-if (gui.domElement) {
-  gui.domElement.addEventListener('pointerdown', e => e.stopPropagation());
-  gui.domElement.addEventListener('pointerup', e => e.stopPropagation());
-  gui.domElement.addEventListener('click', e => e.stopPropagation());
-  gui.domElement.addEventListener('pointermove', e => e.stopPropagation());
+if (import.meta.env.DEV) {
+  import('lil-gui').then(({ default: GUI }) => {
+    const gui = new GUI({ title: 'Configurações do Ambiente' });
+    gui.hide();
+
+    // Prevent clicks on the GUI from triggering 3D raycaster
+    if (gui.domElement) {
+      gui.domElement.addEventListener('pointerdown', e => e.stopPropagation());
+      gui.domElement.addEventListener('pointerup', e => e.stopPropagation());
+      gui.domElement.addEventListener('click', e => e.stopPropagation());
+      gui.domElement.addEventListener('pointermove', e => e.stopPropagation());
+    }
+
+    actions.copySettings = () => {
+      const settings = {
+        config: config,
+        camera: { z: camera.position.z },
+        ambient: { color: ambientColorObj.color, intensity: ambientLight.intensity },
+        directional: {
+          color: directionalColorObj.color,
+          intensity: directionalLight.intensity,
+          x: directionalLight.position.x,
+          y: directionalLight.position.y,
+          z: directionalLight.position.z
+        },
+        fog: { color: fogColorObj.color, near: scene.fog.near, far: scene.fog.far },
+        floor: { color: floorColorObj.color },
+        bgReflectionSettings: bgReflectionSettings
+      };
+
+      const toHex = (num) => {
+        if (typeof num === 'string') return num;
+        return '#' + num.toString(16).padStart(6, '0');
+      };
+
+      settings.ambient.color = toHex(settings.ambient.color);
+      settings.directional.color = toHex(settings.directional.color);
+      settings.fog.color = toHex(settings.fog.color);
+      settings.floor.color = toHex(settings.floor.color);
+
+      const jsonStr = JSON.stringify(settings, null, 2);
+      navigator.clipboard.writeText(jsonStr)
+        .then(() => alert("Configurações copiadas!\nAgora é só colar no chat."))
+        .catch(err => alert("Erro ao copiar. Olhe o console."));
+    };
+
+    gui.add(actions, 'copySettings').name('💾 Copiar Configurações');
+
+    // Theme settings
+    const themeFolder = gui.addFolder('Cores do Site').close();
+    themeFolder.addColor(config, 'bgColor').name('Cor da Névoa (Fog)').onChange(c => {
+      scene.fog.color.set(c);
+      updateBgAspect();
+    });
+
+    // Animation & Scroll settings
+    const animFolder = gui.addFolder('Animação e Scroll').close();
+    animFolder.add(config, 'foldDuration', 0.5, 5.0, 0.1).name('Vel. de Abertura');
+    animFolder.add(config, 'scrollSensitivity', 0.001, 0.01, 0.001).name('Vel. Scroll Cilindro');
+    animFolder.add(config, 'flatScrollSensitivity', 0.001, 0.03, 0.001).name('Vel. Scroll Panorama');
+
+    // Face Materials settings
+    const applyMaterialParams = () => {
+      panelsDataObj.forEach((p, i) => {
+        const mat = p.mesh.material;
+        if (i === 0) mat.color.set(config.faceColor1);
+        if (i === 1) mat.color.set(config.faceColor2);
+        if (i === 2) mat.color.set(config.faceColor3);
+        mat.transmission = config.transmission;
+        mat.opacity = config.opacity;
+        mat.metalness = config.metalness;
+        mat.roughness = config.roughness;
+        mat.ior = config.ior;
+        mat.thickness = config.thickness;
+      });
+    };
+
+    const facesFolder = gui.addFolder('Visual das Telas de Vidro').close();
+    facesFolder.addColor(config, 'faceColor1').name('Cor Tela 1').onChange(applyMaterialParams);
+    facesFolder.addColor(config, 'faceColor2').name('Cor Tela 2').onChange(applyMaterialParams);
+    facesFolder.addColor(config, 'faceColor3').name('Cor Tela 3').onChange(applyMaterialParams);
+    facesFolder.add(config, 'transmission', 0, 1, 0.01).name('Transmissão (Vidro)').onChange(applyMaterialParams);
+    facesFolder.add(config, 'opacity', 0, 1, 0.01).name('Opacidade Geral').onChange(applyMaterialParams);
+    facesFolder.add(config, 'metalness', 0, 1, 0.01).name('Metalizado').onChange(applyMaterialParams);
+    facesFolder.add(config, 'roughness', 0, 1, 0.01).name('Rugosidade (Fosco)').onChange(applyMaterialParams);
+    facesFolder.add(config, 'ior', 1, 3, 0.01).name('Índice de Refração').onChange(applyMaterialParams);
+    facesFolder.add(config, 'thickness', 0, 2, 0.01).name('Espessura').onChange(applyMaterialParams);
+
+    // Front 3D Text settings
+    const applyFrontTextParams = () => {
+      frontTextMeshes.forEach(mesh => {
+        mesh.material.color.set(config.frontTextColor);
+        mesh.material.emissive.set(config.frontTextEmissive);
+        mesh.material.emissiveIntensity = config.frontTextEmissiveIntensity;
+        mesh.material.transmission = config.frontTextTransmission;
+        mesh.material.opacity = config.frontTextOpacity;
+        mesh.material.metalness = config.frontTextMetalness;
+        mesh.material.roughness = config.frontTextRoughness;
+        mesh.material.ior = config.frontTextIor;
+        mesh.material.thickness = config.frontTextThickness;
+      });
+    };
+
+    const applyFrontTextScale = () => {
+      frontTextMeshes.forEach(mesh => {
+        mesh.scale.set(config.frontTextScale, config.frontTextScale, config.frontTextScale);
+      });
+    };
+
+    const frontTextFolder = gui.addFolder('Visual do Texto 3D (Telas)').close();
+    frontTextFolder.add(config, 'frontTextScale', 0.1, 5, 0.05).name('Tamanho Proporcional').onChange(applyFrontTextScale);
+    frontTextFolder.add(config, 'frontTextOffsetDesktop', 0.0, 2.0, 0.01).name('Distância da Face (Desk)').onChange(updateCameraZ);
+    frontTextFolder.add(config, 'frontTextOffsetMobile', 0.0, 2.0, 0.01).name('Distância da Face (Mob)').onChange(updateCameraZ);
+    frontTextFolder.addColor(config, 'frontTextColor').name('Cor').onChange(applyFrontTextParams);
+    frontTextFolder.addColor(config, 'frontTextEmissive').name('Luz Própria (Emissive)').onChange(applyFrontTextParams);
+    frontTextFolder.add(config, 'frontTextEmissiveIntensity', 0, 2, 0.01).name('Intensidade da Luz').onChange(applyFrontTextParams);
+    frontTextFolder.add(config, 'frontTextTransmission', 0, 1, 0.01).name('Transmissão (Vidro)').onChange(applyFrontTextParams);
+    frontTextFolder.add(config, 'frontTextOpacity', 0, 1, 0.01).name('Opacidade').onChange(applyFrontTextParams);
+    frontTextFolder.add(config, 'frontTextMetalness', 0, 1, 0.01).name('Metalizado').onChange(applyFrontTextParams);
+    frontTextFolder.add(config, 'frontTextRoughness', 0, 1, 0.01).name('Rugosidade (Fosco)').onChange(applyFrontTextParams);
+    frontTextFolder.add(config, 'frontTextIor', 1, 3, 0.01).name('Índice de Refração').onChange(applyFrontTextParams);
+    frontTextFolder.add(config, 'frontTextThickness', 0, 2, 0.01).name('Espessura').onChange(applyFrontTextParams);
+
+    // Shatter Physics settings
+    const shatterFolder = gui.addFolder('Física do Vidro').close();
+    shatterFolder.add(config, 'shatterPieces', 10, 500, 10).name('Qtd. de Cacos');
+    shatterFolder.add(config, 'shatterForce', 0.1, 10.0, 0.1).name('Força da Explosão');
+    shatterFolder.add(config, 'shatterGravity', 0.0, 10.0, 0.1).name('Força da Gravidade');
+    shatterFolder.add(config, 'shatterDuration', 0.1, 5.0, 0.1).name('Duração da Queda');
+
+    // Camera settings
+    const cameraFolder = gui.addFolder('Camera').close();
+    cameraFolder.add(cameraSettings, 'baseZ', 2, 20, 0.1).name('Zoom (Z)').onChange(updateCameraZ);
+    cameraFolder.add(config, 'introCamYDesktop', 0, 50, 0.5).name('Intro Y (Desk)').onChange(onIntroSettingChange);
+    cameraFolder.add(config, 'introCamZDesktop', -20, 50, 0.5).name('Intro Z (Desk)').onChange(onIntroSettingChange);
+    cameraFolder.add(config, 'introCamRotXDesktop', -180, 180, 1).name('Intro RotX (Desk)').onChange(onIntroSettingChange);
+    cameraFolder.add(config, 'introCamYMobile', 0, 50, 0.5).name('Intro Y (Mob)').onChange(onIntroSettingChange);
+    cameraFolder.add(config, 'introCamZMobile', -20, 50, 0.5).name('Intro Z (Mob)').onChange(onIntroSettingChange);
+    cameraFolder.add(config, 'introCamRotXMobile', -180, 180, 1).name('Intro RotX (Mob)').onChange(onIntroSettingChange);
+    cameraFolder.add({ lock: () => { isIntroLocked = true; setCameraToIntroState(); } }, 'lock').name('🔒 Travar na Intro (Ajustar)');
+    cameraFolder.add({ play: () => { playIntroAnimation(); } }, 'play').name('▶️ Testar Animação');
+
+    // Lighting settings
+    const lightFolder = gui.addFolder('Luzes').close();
+    lightFolder.add(scene, 'environmentIntensity', 0, 5, 0.1).name('Brilho do HDRI');
+    lightFolder.add(config, 'hdriSaturation', 0, 2, 0.05).name('Saturação do HDRI').onChange(applyHdriSaturation);
+    lightFolder.add(actions, 'useHDRI').name('Ativar HDRI (Reflexos)').onChange((val) => {
+      scene.environment = val ? hdriEnvMap : null;
+    });
+    lightFolder.addColor(ambientColorObj, 'color').name('Cor Ambiente').onChange(c => ambientLight.color.setHex(c));
+    lightFolder.add(ambientLight, 'intensity', 0, 20, 0.1).name('Intensidade Ambiente');
+    lightFolder.addColor(directionalColorObj, 'color').name('Cor Direcional').onChange(c => directionalLight.color.setHex(c));
+    lightFolder.add(directionalLight, 'intensity', 0, 10, 0.1).name('Intens. Direcional');
+    lightFolder.add(directionalLight.position, 'x', -10, 10, 0.1).name('Posição X');
+    lightFolder.add(directionalLight.position, 'y', -10, 20, 0.1).name('Posição Y');
+    lightFolder.add(directionalLight.position, 'z', -10, 10, 0.1).name('Posição Z');
+
+    // Fog settings
+    const fogFolder = gui.addFolder('Névoa (Fog)').close();
+    fogFolder.addColor(fogColorObj, 'color').name('Cor da Névoa').onChange(c => scene.fog.color.setHex(c));
+    fogFolder.add(fogSettings, 'baseNear', 1, 30, 0.1).name('Início 3D').onChange(updateCameraZ);
+    fogFolder.add(fogSettings, 'baseFar', 5, 80, 0.1).name('Fim 3D').onChange(updateCameraZ);
+    fogFolder.add(bgReflectionSettings, 'mainGradientOpacity', 0, 1, 0.01).name('Fumaça do Fundo (2D)').onChange(updateBgAspect);
+
+    // Floor settings
+    const floorFolder = gui.addFolder('Piso / Reflexo (Água)').close();
+    floorFolder.addColor(floorColorObj, 'color').name('Cor do Reflexo').onChange(c => reflector.material.uniforms.color.value.setHex(c));
+    floorFolder.add(bgReflectionSettings, 'opacity', 0, 1, 0.01).name('Opacidade Refl. Fundo').onChange(() => {
+      if (bgImage.complete && bgImage.naturalWidth > 0) {
+        updateBgAspect();
+      }
+    });
+    floorFolder.add(config, 'waveStrength', 0, 0.1, 0.001).name('Força da Onda');
+    floorFolder.add(config, 'waveSpeed', 0, 5, 0.1).name('Velocidade da Onda');
+    floorFolder.add(config, 'fadeStrengthDesktop', 0, 10, 0.01).name('Fade (Desktop)').onChange(updateCameraZ);
+    floorFolder.add(config, 'fadeContrastDesktop', 0.1, 5, 0.01).name('Contraste (Desktop)').onChange(updateCameraZ);
+    floorFolder.add(config, 'fadeStrengthMobile', 0, 10, 0.01).name('Fade (Mobile)').onChange(updateCameraZ);
+    floorFolder.add(config, 'fadeContrastMobile', 0.1, 5, 0.01).name('Contraste (Mobile)').onChange(updateCameraZ);
+  });
 }
-
-const actions = {
-  useHDRI: true,
-  copySettings: () => {
-    const settings = {
-      config: config, // Includes theme, physics, animation speeds
-      camera: { z: camera.position.z },
-      ambient: { color: ambientColorObj.color, intensity: ambientLight.intensity },
-      directional: {
-        color: directionalColorObj.color,
-        intensity: directionalLight.intensity,
-        x: directionalLight.position.x,
-        y: directionalLight.position.y,
-        z: directionalLight.position.z
-      },
-      fog: { color: fogColorObj.color, near: scene.fog.near, far: scene.fog.far },
-      floor: { color: floorColorObj.color },
-      bgReflectionSettings: bgReflectionSettings
-    };
-
-    // Converte de numero (ex: 16777215) para hex color string (ex: #ffffff) pra facilitar leitura
-    const toHex = (num) => {
-      if (typeof num === 'string') return num;
-      return '#' + num.toString(16).padStart(6, '0');
-    };
-
-    settings.ambient.color = toHex(settings.ambient.color);
-    settings.directional.color = toHex(settings.directional.color);
-    settings.fog.color = toHex(settings.fog.color);
-    settings.floor.color = toHex(settings.floor.color);
-
-    const jsonStr = JSON.stringify(settings, null, 2);
-    navigator.clipboard.writeText(jsonStr)
-      .then(() => alert("Configurações copiadas!\nAgora é só colar no chat."))
-      .catch(err => alert("Erro ao copiar. Olhe o console."));
-  }
-};
-
-gui.add(actions, 'copySettings').name('💾 Copiar Configurações');
-
-// Theme settings
-const themeFolder = gui.addFolder('Cores do Site').close();
-themeFolder.addColor(config, 'bgColor').name('Cor da Névoa (Fog)').onChange(c => {
-  scene.fog.color.set(c);
-  updateBgAspect();
-});
-
-// Animation & Scroll settings
-const animFolder = gui.addFolder('Animação e Scroll').close();
-animFolder.add(config, 'foldDuration', 0.5, 5.0, 0.1).name('Vel. de Abertura');
-animFolder.add(config, 'scrollSensitivity', 0.001, 0.01, 0.001).name('Vel. Scroll Cilindro');
-animFolder.add(config, 'flatScrollSensitivity', 0.001, 0.03, 0.001).name('Vel. Scroll Panorama');
-
-// Face Materials settings
-const applyMaterialParams = () => {
-  panelsDataObj.forEach((p, i) => {
-    const mat = p.mesh.material;
-    if (i === 0) mat.color.set(config.faceColor1);
-    if (i === 1) mat.color.set(config.faceColor2);
-    if (i === 2) mat.color.set(config.faceColor3);
-    mat.transmission = config.transmission;
-    mat.opacity = config.opacity;
-    mat.metalness = config.metalness;
-    mat.roughness = config.roughness;
-    mat.ior = config.ior;
-    mat.thickness = config.thickness;
-  });
-};
-
-const facesFolder = gui.addFolder('Visual das Telas de Vidro').close();
-facesFolder.addColor(config, 'faceColor1').name('Cor Tela 1').onChange(applyMaterialParams);
-facesFolder.addColor(config, 'faceColor2').name('Cor Tela 2').onChange(applyMaterialParams);
-facesFolder.addColor(config, 'faceColor3').name('Cor Tela 3').onChange(applyMaterialParams);
-facesFolder.add(config, 'transmission', 0, 1, 0.01).name('Transmissão (Vidro)').onChange(applyMaterialParams);
-facesFolder.add(config, 'opacity', 0, 1, 0.01).name('Opacidade Geral').onChange(applyMaterialParams);
-facesFolder.add(config, 'metalness', 0, 1, 0.01).name('Metalizado').onChange(applyMaterialParams);
-facesFolder.add(config, 'roughness', 0, 1, 0.01).name('Rugosidade (Fosco)').onChange(applyMaterialParams);
-facesFolder.add(config, 'ior', 1, 3, 0.01).name('Índice de Refração').onChange(applyMaterialParams);
-facesFolder.add(config, 'thickness', 0, 2, 0.01).name('Espessura').onChange(applyMaterialParams);
-
-// Front 3D Text settings
-const applyFrontTextParams = () => {
-  frontTextMeshes.forEach(mesh => {
-    mesh.material.color.set(config.frontTextColor);
-    mesh.material.emissive.set(config.frontTextEmissive);
-    mesh.material.emissiveIntensity = config.frontTextEmissiveIntensity;
-    mesh.material.transmission = config.frontTextTransmission;
-    mesh.material.opacity = config.frontTextOpacity;
-    mesh.material.metalness = config.frontTextMetalness;
-    mesh.material.roughness = config.frontTextRoughness;
-    mesh.material.ior = config.frontTextIor;
-    mesh.material.thickness = config.frontTextThickness;
-  });
-};
-
-const applyFrontTextScale = () => {
-  frontTextMeshes.forEach(mesh => {
-    mesh.scale.set(config.frontTextScale, config.frontTextScale, config.frontTextScale);
-  });
-};
-
-const frontTextFolder = gui.addFolder('Visual do Texto 3D (Telas)').close();
-frontTextFolder.add(config, 'frontTextScale', 0.1, 5, 0.05).name('Tamanho Proporcional').onChange(applyFrontTextScale);
-frontTextFolder.add(config, 'frontTextOffsetDesktop', 0.0, 2.0, 0.01).name('Distância da Face (Desk)').onChange(updateCameraZ);
-frontTextFolder.add(config, 'frontTextOffsetMobile', 0.0, 2.0, 0.01).name('Distância da Face (Mob)').onChange(updateCameraZ);
-frontTextFolder.addColor(config, 'frontTextColor').name('Cor').onChange(applyFrontTextParams);
-frontTextFolder.addColor(config, 'frontTextEmissive').name('Luz Própria (Emissive)').onChange(applyFrontTextParams);
-frontTextFolder.add(config, 'frontTextEmissiveIntensity', 0, 2, 0.01).name('Intensidade da Luz').onChange(applyFrontTextParams);
-frontTextFolder.add(config, 'frontTextTransmission', 0, 1, 0.01).name('Transmissão (Vidro)').onChange(applyFrontTextParams);
-frontTextFolder.add(config, 'frontTextOpacity', 0, 1, 0.01).name('Opacidade').onChange(applyFrontTextParams);
-frontTextFolder.add(config, 'frontTextMetalness', 0, 1, 0.01).name('Metalizado').onChange(applyFrontTextParams);
-frontTextFolder.add(config, 'frontTextRoughness', 0, 1, 0.01).name('Rugosidade (Fosco)').onChange(applyFrontTextParams);
-frontTextFolder.add(config, 'frontTextIor', 1, 3, 0.01).name('Índice de Refração').onChange(applyFrontTextParams);
-frontTextFolder.add(config, 'frontTextThickness', 0, 2, 0.01).name('Espessura').onChange(applyFrontTextParams);
-
-// Shatter Physics settings
-const shatterFolder = gui.addFolder('Física do Vidro').close();
-shatterFolder.add(config, 'shatterPieces', 10, 500, 10).name('Qtd. de Cacos');
-shatterFolder.add(config, 'shatterForce', 0.1, 10.0, 0.1).name('Força da Explosão');
-shatterFolder.add(config, 'shatterGravity', 0.0, 10.0, 0.1).name('Força da Gravidade');
-shatterFolder.add(config, 'shatterDuration', 0.1, 5.0, 0.1).name('Duração da Queda');
-
-// Camera settings
-const cameraFolder = gui.addFolder('Camera').close();
-cameraFolder.add(cameraSettings, 'baseZ', 2, 20, 0.1).name('Zoom (Z)').onChange(updateCameraZ);
-
-cameraFolder.add(config, 'introCamYDesktop', 0, 50, 0.5).name('Intro Y (Desk)').onChange(onIntroSettingChange);
-cameraFolder.add(config, 'introCamZDesktop', -20, 50, 0.5).name('Intro Z (Desk)').onChange(onIntroSettingChange);
-cameraFolder.add(config, 'introCamRotXDesktop', -180, 180, 1).name('Intro RotX (Desk)').onChange(onIntroSettingChange);
-
-cameraFolder.add(config, 'introCamYMobile', 0, 50, 0.5).name('Intro Y (Mob)').onChange(onIntroSettingChange);
-cameraFolder.add(config, 'introCamZMobile', -20, 50, 0.5).name('Intro Z (Mob)').onChange(onIntroSettingChange);
-cameraFolder.add(config, 'introCamRotXMobile', -180, 180, 1).name('Intro RotX (Mob)').onChange(onIntroSettingChange);
-
-cameraFolder.add({
-  lock: () => {
-    isIntroLocked = true;
-    setCameraToIntroState();
-  }
-}, 'lock').name('🔒 Travar na Intro (Ajustar)');
-
-cameraFolder.add({
-  play: () => {
-    playIntroAnimation();
-  }
-}, 'play').name('▶️ Testar Animação');
-
-// Lighting settings
-const lightFolder = gui.addFolder('Luzes').close();
-lightFolder.add(scene, 'environmentIntensity', 0, 5, 0.1).name('Brilho do HDRI');
-lightFolder.add(config, 'hdriSaturation', 0, 2, 0.05).name('Saturação do HDRI').onChange(applyHdriSaturation);
-lightFolder.add(actions, 'useHDRI').name('Ativar HDRI (Reflexos)').onChange((val) => {
-  scene.environment = val ? hdriEnvMap : null;
-});
-lightFolder.addColor(ambientColorObj, 'color').name('Cor Ambiente').onChange(c => ambientLight.color.setHex(c));
-lightFolder.add(ambientLight, 'intensity', 0, 20, 0.1).name('Intensidade Ambiente');
-
-lightFolder.addColor(directionalColorObj, 'color').name('Cor Direcional').onChange(c => directionalLight.color.setHex(c));
-lightFolder.add(directionalLight, 'intensity', 0, 10, 0.1).name('Intens. Direcional');
-lightFolder.add(directionalLight.position, 'x', -10, 10, 0.1).name('Posição X');
-lightFolder.add(directionalLight.position, 'y', -10, 20, 0.1).name('Posição Y');
-lightFolder.add(directionalLight.position, 'z', -10, 10, 0.1).name('Posição Z');
-
-// Fog settings
-const fogFolder = gui.addFolder('Névoa (Fog)').close();
-fogFolder.addColor(fogColorObj, 'color').name('Cor da Névoa').onChange(c => scene.fog.color.setHex(c));
-fogFolder.add(fogSettings, 'baseNear', 1, 30, 0.1).name('Início 3D').onChange(updateCameraZ);
-fogFolder.add(fogSettings, 'baseFar', 5, 80, 0.1).name('Fim 3D').onChange(updateCameraZ);
-
-// Controles da Parede de Fumaça (Fog Wall) e Fundo 2D
-fogFolder.add(bgReflectionSettings, 'mainGradientOpacity', 0, 1, 0.01).name('Fumaça do Fundo (2D)').onChange(updateBgAspect);
-
-// Floor settings
-const floorFolder = gui.addFolder('Piso / Reflexo (Água)').close();
-floorFolder.addColor(floorColorObj, 'color').name('Cor do Reflexo').onChange(c => reflector.material.uniforms.color.value.setHex(c));
-floorFolder.add(bgReflectionSettings, 'opacity', 0, 1, 0.01).name('Opacidade Refl. Fundo').onChange(() => {
-  if (bgImage.complete && bgImage.naturalWidth > 0) {
-    updateBgAspect(); // This will recalculate dimensions and update both safely
-  }
-});
-floorFolder.add(config, 'waveStrength', 0, 0.1, 0.001).name('Força da Onda');
-floorFolder.add(config, 'waveSpeed', 0, 5, 0.1).name('Velocidade da Onda');
-floorFolder.add(config, 'fadeStrengthDesktop', 0, 10, 0.01).name('Fade (Desktop)').onChange(updateCameraZ);
-floorFolder.add(config, 'fadeContrastDesktop', 0.1, 5, 0.01).name('Contraste (Desktop)').onChange(updateCameraZ);
-floorFolder.add(config, 'fadeStrengthMobile', 0, 10, 0.01).name('Fade (Mobile)').onChange(updateCameraZ);
-floorFolder.add(config, 'fadeContrastMobile', 0.1, 5, 0.01).name('Contraste (Mobile)').onChange(updateCameraZ);
 
 // --- Resize Handler ---
 window.addEventListener('resize', () => {
@@ -1271,7 +1256,7 @@ window.addEventListener('resize', () => {
   updateBgAspect();
 
   // Re-render immediately on resize
-  if (window.activeScene === 'main') {
+  if (state.activeScene === 'main') {
     renderer.render(scene, camera);
   }
 });
@@ -1302,7 +1287,7 @@ window.addEventListener('enterProjectGallery', (e) => {
     duration: 1,
     delay: 0.5,
     onComplete: () => {
-      window.activeScene = 'gallery';
+      state.activeScene = 'gallery';
       window.dispatchEvent(new CustomEvent('enterGalleryScene'));
       gsap.to(transitionLayer, {
         opacity: 0, duration: 1, onComplete: () => {
@@ -1326,7 +1311,7 @@ window.addEventListener('exitGalleryScene', (e) => {
     opacity: 1,
     duration: 1,
     onComplete: () => {
-      window.activeScene = 'main';
+      state.activeScene = 'main';
 
       const aspect = window.innerWidth / window.innerHeight;
       let targetZ = cameraSettings.baseZ;
@@ -1369,7 +1354,7 @@ function animate() {
   const delta = timer.getDelta();
 
   // Update screens
-  if (window.activeScene === 'main') {
+  if (state.activeScene === 'main') {
     updateScreens();
 
     // Animate floor water
@@ -1380,7 +1365,7 @@ function animate() {
     }
   }
 
-  if (window.activeScene === 'main') {
+  if (state.activeScene === 'main') {
     renderer.render(scene, camera);
   } else {
     galleryComposer.render();

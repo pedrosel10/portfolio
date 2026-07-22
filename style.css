@@ -3,6 +3,7 @@
   src: url('/CooperLtBT-Regular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
+  font-display: swap;
 }
 
 * {
@@ -63,6 +64,68 @@ canvas {
   100% {
     transform: rotate(360deg);
   }
+}
+
+/* Loading Screen (moved from inline styles) */
+#loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #F8F2EB;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.8s ease;
+}
+
+#loading-text {
+  font-family: 'CooperLtBT', serif;
+  position: absolute;
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: #000000;
+}
+
+/* Transition Layer (moved from inline styles) */
+#transition-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Portfolio View (moved from inline styles) */
+#portfolio-view {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10;
+  overflow-y: auto;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#portfolio-view > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 100px 0;
+  gap: 80px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 #top-logo {

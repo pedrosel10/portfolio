@@ -105,17 +105,14 @@
 </head>
 
 <body>
-  <div id="loading-screen"
-    style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #F8F2EB; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.8s ease;">
+  <div id="loading-screen">
     
     <!-- O tamanho é gerido por CSS media query para bater com o 3D -->
     <svg id="loading-svg" viewBox="0 0 100 100">
       <circle cx="50" cy="50" r="50" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="1.5" />
       <circle id="loading-circle" cx="50" cy="50" r="50" fill="none" stroke="#000000" stroke-width="1.5" stroke-dasharray="315" stroke-dashoffset="315" stroke-linecap="round" />
     </svg>
-    <p id="loading-text"
-      style="font-family: 'CooperLtBT', serif; position: absolute; font-size: 14px; letter-spacing: 4px; color: #000000;">
-      0%</p>
+    <p id="loading-text">0%</p>
   </div>
 
   <div id="app"></div>
@@ -154,7 +151,7 @@
   <script>
     const skills = ['Branding', 'Web Design', 'Motion', '3D', 'Creative Direction'];
     let html = '';
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 20; i++) {
       skills.forEach(skill => html += '<span>' + skill + '</span>');
     }
     document.querySelector('.ticker-v-track').innerHTML = html;
@@ -162,13 +159,9 @@
   </script>
 
   <!-- Transition Layer for Crossfade -->
-  <div id="transition-layer"
-    style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; z-index:999; opacity:0; pointer-events:none;">
-  </div>
-  <div id="portfolio-view"
-    style="display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10; overflow-y: auto; background: transparent; opacity: 0; pointer-events: none;">
-    <div
-      style="display: flex; flex-direction: column; align-items: center; padding: 100px 0; gap: 80px; max-width: 1200px; margin: 0 auto;">
+  <div id="transition-layer"></div>
+  <div id="portfolio-view">
+    <div>
       <div class="placeholder-project">EM BREVE</div>
       <div class="placeholder-project">EM BREVE</div>
       <div class="placeholder-project">EM BREVE</div>

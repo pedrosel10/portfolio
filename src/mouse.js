@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { isFolded, toggleFold } from './screens.js';
+import { state } from './state.js';
 
 export function initMouse(scene, camera, screensGroup) {
   const mouse = new THREE.Vector2();
@@ -14,7 +15,7 @@ export function initMouse(scene, camera, screensGroup) {
   let targetTiltY = 0;
 
   window.addEventListener('pointermove', (e) => {
-    if (window.activeScene !== 'main') return;
+    if (state.activeScene !== 'main') return;
 
     // Normalize mouse position: -1 to +1
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -26,12 +27,10 @@ export function initMouse(scene, camera, screensGroup) {
 
     gsap.to(screensGroup.rotation, {
       x: targetTiltX,
-      // We don't overwrite Y completely because scrolling handles Y rotation.
-      // But we can tilt the whole scene or an outer group.
-      // For now, tilt X and Z on the screensGroup
       z: -mouse.x * 0.02,
       duration: 0.5,
-      ease: 'power2.out'
+      ease: 'power2.out',
+      overwrite: 'auto'
     });
 
     // Raycast to find screen intersections
@@ -51,13 +50,13 @@ export function initMouse(scene, camera, screensGroup) {
       // Fade in light (slightly stronger on mobile as requested)
       const isMobile = window.innerWidth < 768;
       const targetIntensity = isMobile ? 4.5 : 4;
-      gsap.to(cursorLight, { intensity: targetIntensity, duration: 0.2 });
+      gsap.to(cursorLight, { intensity: targetIntensity, duration: 0.2, overwrite: 'auto' });
 
       // Change cursor
       document.body.style.cursor = 'pointer';
     } else {
       // Fade out light
-      gsap.to(cursorLight, { intensity: 0, duration: 0.5 });
+      gsap.to(cursorLight, { intensity: 0, duration: 0.5, overwrite: 'auto' });
       document.body.style.cursor = 'default';
     }
   });
@@ -66,13 +65,13 @@ export function initMouse(scene, camera, screensGroup) {
   let startX = 0;
   let startY = 0;
   window.addEventListener('pointerdown', (e) => {
-    if (window.activeScene !== 'main') return;
+    if (state.activeScene !== 'main') return;
     startX = e.clientX;
     startY = e.clientY;
   });
 
   window.addEventListener('pointerup', (e) => {
-    if (window.activeScene !== 'main') return;
+    if (state.activeScene !== 'main') return;
 
     // Apaga a luz no mobile se tirar o dedo da tela
     if (e.pointerType === 'touch') {

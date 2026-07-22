@@ -7,6 +7,19 @@ import { setupShatterInteraction } from './shatter.js';
 import gsap from 'gsap';
 import { config } from './config.js';
 
+// Cache font loading — load once, reuse for all 3 panels
+let _fontPromise = null;
+function getFont() {
+  if (!_fontPromise) {
+    _fontPromise = new Promise((resolve) => {
+      new TTFLoader().load('./CooperLtBT-Regular.ttf', (json) => {
+        resolve(new Font(json));
+      });
+    });
+  }
+  return _fontPromise;
+}
+
 export const screensGroup = new THREE.Group();
 export let isFolded = true;
 export let isTransitioning = false;
@@ -151,9 +164,7 @@ function createSimpleScreenPanel(index, texture, radius, height, anglePerScreen,
 
   // Add 3D text with glass material
   const texts = ['BRAND', 'WEB', 'MKT'];
-  const ttfLoader = new TTFLoader();
-  ttfLoader.load('./CooperLtBT-Regular.ttf', (json) => {
-    const font = new Font(json);
+  getFont().then((font) => {
     const textGeo = new TextGeometry(texts[index], {
       font: font,
       size: 0.28, // 30% menor (0.4 * 0.70 = 0.28)
@@ -386,6 +397,11 @@ function runFoldAnimation(targetFolded, duration, ease, onComplete) {
   gsap.delayedCall(duration, onComplete);
 }
 
+// Reusable objects for the render loop — avoids GC spikes from per-frame allocation
+const _vec = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _parentQuat = new THREE.Quaternion();
+
 export function updateScreens() {
   if (isFolded) {
     for (let i = 0; i < 3; i++) {
@@ -395,31 +411,28 @@ export function updateScreens() {
       panelGroup.rotation.set(0, angle, 0);
     }
   } else {
-    const vec = new THREE.Vector3();
-    const quat = new THREE.Quaternion();
-    const parentQuat = new THREE.Quaternion();
 
     for (let i = 0; i < 3; i++) {
       const panelGroup = panelsDataObj[i].group;
       const dummy = targetDummies[i];
       if (dummy) {
-        dummy.getWorldPosition(vec);
-        dummy.getWorldQuaternion(quat);
+        dummy.getWorldPosition(_vec);
+        dummy.getWorldQuaternion(_quat);
 
         // Remove mouse parallax/world position offset to get local coordinates
-        panelsGroup.worldToLocal(vec);
+        panelsGroup.worldToLocal(_vec);
 
         // Infinite Scroll Wrap Logic
-        vec.x += scrollState.offsetX;
-        while (vec.x > 1.5 * S) vec.x -= 3 * S;
-        while (vec.x < -1.5 * S) vec.x += 3 * S;
+        _vec.x += scrollState.offsetX;
+        while (_vec.x > 1.5 * S) _vec.x -= 3 * S;
+        while (_vec.x < -1.5 * S) _vec.x += 3 * S;
 
-        panelGroup.position.copy(vec);
+        panelGroup.position.copy(_vec);
 
         // Remove mouse parallax/world rotation to get local rotation
-        panelsGroup.getWorldQuaternion(parentQuat);
-        quat.premultiply(parentQuat.invert());
-        panelGroup.quaternion.copy(quat);
+        panelsGroup.getWorldQuaternion(_parentQuat);
+        _quat.premultiply(_parentQuat.invert());
+        panelGroup.quaternion.copy(_quat);
       }
     }
   }
