@@ -5,11 +5,10 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createScreens, screensGroup, toggleFold, updateScreens, panelsDataObj, frontTextMeshes, isFolded, updateFrontTextOffset } from './screens.js';
-import { galleryScene, galleryCamera, initBrandParticles } from './gallery3d.js';
+import { galleryScene, galleryCamera } from './gallery3d.js';
 import { createFloor } from './floor.js';
 import { initScroll } from './scroll.js';
 import { initMouse } from './mouse.js';
-import { initBioParticles, startBioParticles, stopBioParticles } from './bioParticles.js';
 import GUI from 'lil-gui';
 import { config } from './config.js';
 import gsap from 'gsap';
@@ -121,9 +120,13 @@ function playIntroAnimation() {
       frontTextMeshes.forEach(mesh => {
         gsap.to(mesh.material, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
       });
-      const headerEl = document.getElementById('top-header-container') || document.getElementById('top-logo');
-      if (headerEl) {
-        gsap.to(headerEl, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
+      const logoEl = document.getElementById('top-logo');
+      if (logoEl) {
+        gsap.to(logoEl, { opacity: 1, duration: 1.5, ease: 'power2.inOut' });
+      }
+      const authorInfoEl = document.getElementById('author-info');
+      if (authorInfoEl) {
+        gsap.to(authorInfoEl, { opacity: 1, duration: 1.5, ease: 'power2.inOut', onComplete: () => { authorInfoEl.style.pointerEvents = 'auto'; } });
       }
       const btnEl = document.getElementById('global-action-btn');
       if (btnEl) {
@@ -173,6 +176,30 @@ function doFinalStep() {
 
 function finishLoading() {
   const loadingScreen = document.getElementById('loading-screen');
+  
+  // Force pre-compilation and GPU uploads to prevent massive stutters during intro
+  if (typeof renderer !== 'undefined' && scene && camera) {
+    renderer.compile(scene, camera);
+    
+    // Disable frustum culling temporarily to force everything (even off-screen) to render once
+    scene.traverse((child) => {
+      if (child.isMesh) {
+        child.userData.wasFrustumCulled = child.frustumCulled;
+        child.frustumCulled = false;
+      }
+    });
+    
+    // Do a dummy render
+    renderer.render(scene, camera);
+    
+    // Restore frustum culling
+    scene.traverse((child) => {
+      if (child.isMesh && child.userData.wasFrustumCulled !== undefined) {
+        child.frustumCulled = child.userData.wasFrustumCulled;
+      }
+    });
+  }
+
   if (loadingScreen && loadingScreen.style.opacity !== '0') {
     loadingScreen.style.opacity = '0';
     setTimeout(() => {
@@ -323,7 +350,7 @@ function updateBgAspect() {
   const h = bgCanvas.height;
   const canvasAspect = w / h;
   const imageAspect = bgImage.naturalWidth / bgImage.naturalHeight;
-  
+
   let drawW = w;
   let drawH = h;
   let offsetX = 0;
@@ -464,12 +491,12 @@ reflector = createFloor(scene);
 const originalOnBeforeRender = reflector.onBeforeRender;
 reflector.onBeforeRender = function (renderer, scene, camera) {
   const oldBg = scene.background;
-  
+
   // Use the unmasked texture for the reflection
   scene.background = bgTextureUnmasked;
-  
+
   originalOnBeforeRender.call(this, renderer, scene, camera);
-  
+
   // Restore the masked texture for the main camera
   scene.background = oldBg;
 };
@@ -479,10 +506,6 @@ reflector.material.uniforms.color.value.setHex(floorColorObj.color);
 updateCameraZ(); // Update dynamic uniforms (e.g. fadeStrength) on load
 
 // --- Interactions ---
-setTimeout(() => {
-  initBioParticles();
-  initBrandParticles();
-}, 4000); // Wait for the initial animation to finish to avoid lag spikes
 initScroll();
 initMouse(scene, camera, screensGroup);
 
@@ -505,8 +528,393 @@ if (globalBtn) {
       window.dispatchEvent(new CustomEvent('exitGalleryScene'));
     } else if (currentActionType === 'exitProject') {
       window.dispatchEvent(new CustomEvent('exitProjectGallery'));
-    } else if (currentActionType === 'closeBioFold') {
-      closeBioFold();
+    }
+  });
+}
+
+// --- Interactive About Text & Intro Slot Machine ---
+const textParts = [
+  { text: "Designer e ", keyword: "desenvolvedor" },
+  { text: " front-end brasileiro especializado em ", keyword: "branding," },
+  { text: " experiências digitais e ", keyword: "websites" },
+  { text: " interativos.\n\nTransformo marcas em ", keyword: "experiências" },
+  { text: " digitais que chamam atenção, geram ", keyword: "confiança" },
+  { text: " e convertem.", keyword: null }
+];
+let currentTextPartIndex = 0;
+
+function wrapChars(str) {
+  let html = '';
+  const tokens = str.split(/(\s+)/);
+  tokens.forEach(token => {
+    if (!token) return;
+    if (token.match(/^\s+$/)) {
+      if (token.includes('\n')) {
+        html += token.replace(/\n/g, '<br>');
+      } else {
+        html += token;
+      }
+    } else {
+      html += `<span class="word" style="display: inline-block; white-space: nowrap;">`;
+      token.split('').forEach(char => {
+        html += `<span class="char">${char}</span>`;
+      });
+      html += `</span>`;
+    }
+  });
+  return html;
+}
+
+function buildInteractiveText() {
+  const container = document.getElementById('interactive-text');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  textParts.forEach((part, index) => {
+    const partWrapper = document.createElement('span');
+    partWrapper.id = `text-part-${index}`;
+    partWrapper.style.display = 'inline';
+    
+    let html = wrapChars(part.text);
+    if (part.keyword) {
+      const keywordWrapped = wrapChars(part.keyword);
+      html += `<span class="keyword-interactive" id="keyword-${index}">${keywordWrapped}</span>`;
+    }
+    partWrapper.innerHTML = html;
+    container.appendChild(partWrapper);
+    
+    gsap.set(partWrapper.querySelectorAll('.char'), { opacity: 0, y: 15 });
+    
+    if (part.keyword) {
+      const kw = partWrapper.querySelector('.keyword-interactive');
+      kw.addEventListener('click', () => {
+        if (kw.classList.contains('clickable')) {
+          kw.classList.remove('clickable', 'radiating');
+          revealPart(index + 1);
+        }
+      });
+    }
+  });
+}
+
+function revealPart(index) {
+  if (index >= textParts.length) return;
+  currentTextPartIndex = index;
+  
+  const partWrapper = document.getElementById(`text-part-${index}`);
+  const chars = partWrapper.querySelectorAll('.char');
+  
+  gsap.to(chars, {
+    opacity: 1,
+    y: 0,
+    duration: 0.4,
+    stagger: 0.02,
+    ease: 'power2.out',
+    onComplete: () => {
+      if (textParts[index].keyword) {
+        const kw = document.getElementById(`keyword-${index}`);
+        kw.classList.add('clickable', 'radiating');
+      }
+    }
+  });
+}
+
+function resetInteractiveText() {
+  const container = document.getElementById('interactive-text');
+  if (!container) return;
+  currentTextPartIndex = 0;
+  gsap.killTweensOf(container.querySelectorAll('.char'));
+  gsap.set(container.querySelectorAll('.char'), { opacity: 0, y: 15 });
+  container.querySelectorAll('.keyword-interactive').forEach(kw => {
+    kw.classList.remove('clickable', 'radiating');
+  });
+}
+
+function animateOutInteractiveText() {
+  const container = document.getElementById('interactive-text');
+  if (!container) return;
+  
+  const visibleChars = Array.from(container.querySelectorAll('.char')).filter(char => {
+    return parseFloat(gsap.getProperty(char, "opacity")) > 0;
+  });
+  
+  if (visibleChars.length === 0) return;
+  
+  const shuffled = visibleChars.sort(() => Math.random() - 0.5);
+  
+  gsap.to(shuffled, {
+    opacity: 0,
+    y: -12,
+    duration: 0.4,
+    stagger: 0.01,
+    ease: 'power2.in'
+  });
+  
+  container.querySelectorAll('.keyword-interactive').forEach(kw => {
+    kw.classList.remove('clickable', 'radiating');
+  });
+}
+
+let introStrips = [];
+function buildIntroSlot() {
+  const introContainer = document.getElementById('about-intro-slot');
+  if (!introContainer) return;
+  const sentence = "Olá, eu sou o Pedro.";
+  const charsPool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.split('');
+  introContainer.innerHTML = '';
+  introStrips = [];
+  
+  sentence.split('').forEach(letter => {
+    if (letter === ' ') {
+      const space = document.createElement('div');
+      space.style.width = '8px';
+      introContainer.appendChild(space);
+      return;
+    }
+    
+    const col = document.createElement('div');
+    col.className = 'slot-column';
+    col.style.fontFamily = "'CooperLtBT', serif";
+    col.style.fontSize = '24px';
+    
+    const measure = document.createElement('span');
+    measure.style.visibility = 'hidden';
+    measure.style.position = 'absolute';
+    measure.style.whiteSpace = 'nowrap';
+    measure.style.fontFamily = "'CooperLtBT', serif";
+    measure.style.fontSize = '24px';
+    measure.innerText = letter;
+    document.body.appendChild(measure);
+    const width = measure.getBoundingClientRect().width;
+    document.body.removeChild(measure);
+    
+    col.style.width = width + 'px';
+    
+    const strip = document.createElement('div');
+    strip.className = 'slot-strip';
+    
+    let html = `<div class="slot-char">${charsPool[Math.floor(Math.random() * charsPool.length)]}</div>`;
+    for (let i = 0; i < 8; i++) {
+      html += `<div class="slot-char">${charsPool[Math.floor(Math.random() * charsPool.length)]}</div>`;
+    }
+    html += `<div class="slot-char">${letter}</div>`;
+    
+    strip.innerHTML = html;
+    col.appendChild(strip);
+    introContainer.appendChild(col);
+    introStrips.push({ col, strip, numItems: 10, letter });
+  });
+}
+
+let introRespinInterval;
+
+function animateIntroSlot(isEntering) {
+  if (introStrips.length === 0) {
+    buildIntroSlot();
+    buildInteractiveText();
+  }
+  
+  if (isEntering) {
+    resetInteractiveText();
+  } else {
+    animateOutInteractiveText();
+  }
+  
+  if (introRespinInterval) clearInterval(introRespinInterval);
+  
+  introStrips.forEach((obj, i) => {
+    const { col, strip, numItems } = obj;
+    if (isEntering) {
+      gsap.set(col, { opacity: 0, y: 15 });
+      gsap.set(strip, { y: '0%' });
+      
+      const delay = 0.4 + i * 0.03;
+      
+      gsap.to(col, {
+        opacity: 1,
+        y: 0,
+        duration: 0.4,
+        delay: delay,
+        ease: 'power2.out'
+      });
+
+      gsap.to(strip, {
+        y: -((numItems - 1) / numItems) * 100 + '%',
+        duration: 1.0 + Math.random() * 0.4,
+        ease: 'power3.inOut',
+        delay: delay
+      });
+    } else {
+      const delay = (introStrips.length - i) * 0.02;
+      
+      // Randomize letters before exiting
+      if (obj.letter !== ' ') {
+        const children = strip.children;
+        const charsPool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.split('');
+        for (let j = 1; j < children.length - 1; j++) {
+          children[j].innerText = charsPool[Math.floor(Math.random() * charsPool.length)];
+        }
+      }
+      
+      gsap.to(col, {
+        opacity: 0,
+        y: -15,
+        duration: 0.4,
+        delay: delay,
+        ease: 'power2.in'
+      });
+
+      gsap.to(strip, {
+        y: '0%',
+        duration: 0.8,
+        ease: 'power3.in',
+        delay: delay
+      });
+    }
+  });
+  
+  if (isEntering) {
+    setTimeout(() => revealPart(0), 1000);
+    
+    // Respin every 4 seconds
+    introRespinInterval = setInterval(() => {
+      introStrips.forEach((obj, i) => {
+        if (obj.letter === ' ') return; // Don't respin spaces
+        const { strip, numItems } = obj;
+        const children = strip.children;
+        const charsPool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.split('');
+        
+        // Match index 0 to the target letter so snapping to 0% is completely invisible
+        children[0].innerText = obj.letter;
+        for (let j = 1; j < children.length - 1; j++) {
+          children[j].innerText = charsPool[Math.floor(Math.random() * charsPool.length)];
+        }
+        
+        gsap.set(strip, { y: '0%' });
+        gsap.to(strip, {
+          y: -((numItems - 1) / numItems) * 100 + '%',
+          duration: 1.0 + Math.random() * 0.5,
+          ease: 'power3.inOut',
+          delay: i * 0.02
+        });
+      });
+    }, 4000);
+  }
+}
+
+function animateTickersTransition(tickerV, tickerH, isEntering) {
+  if (isEntering) {
+    gsap.fromTo(tickerV, 
+      { x: "-50vw" }, 
+      { x: "0", duration: 1.0, ease: "power3.out", delay: 0.5 }
+    );
+    gsap.fromTo(tickerH,
+      { y: "50vh" },
+      { y: "0", duration: 1.0, ease: "power3.out", delay: 0.5 }
+    );
+  } else {
+    gsap.to(tickerV, { x: "-50vw", duration: 0.8, ease: "power3.in" });
+    gsap.to(tickerH, { y: "50vh", duration: 0.8, ease: "power3.in" });
+  }
+}
+
+// --- About Fold Interaction ---
+let isAboutOpen = false;
+const authorInfoEl = document.getElementById('author-info');
+const aboutFoldEl = document.getElementById('about-fold');
+const aboutContentEl = document.querySelector('.about-center-box');
+
+if (authorInfoEl && aboutFoldEl) {
+  authorInfoEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    isAboutOpen = !isAboutOpen;
+
+    if (isAboutOpen) {
+      authorInfoEl.classList.add('open');
+      if (reflector) {
+        gsap.to(reflector.material.uniforms.globalOpacity, { value: 0, duration: 0.4 });
+      }
+      gsap.to(camera.position, {
+        y: -12, // Move camera down (scene moves up)
+        duration: 1.5,
+        ease: 'power3.inOut',
+        onUpdate: () => {
+          if (scene.fog) {
+            const dist = camera.position.length();
+            const extraDist = (1 - introState.fogFade) * 5;
+            scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
+            scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
+          }
+          if (reflector) {
+            reflector.visible = camera.position.y > -1.45;
+          }
+        }
+      });
+      aboutFoldEl.style.opacity = '1';
+      aboutFoldEl.style.pointerEvents = 'auto';
+      gsap.to(aboutContentEl, {
+        y: 0,
+        duration: 1.0,
+        delay: 0.5,
+        ease: 'power3.out'
+      });
+      
+      animateIntroSlot(true);
+
+      const tickerH = document.querySelector('.ticker-h');
+      const tickerV = document.querySelector('.ticker-v');
+      
+      if (tickerH && tickerV) {
+        animateTickersTransition(tickerV, tickerH, true);
+      }
+    } else {
+      authorInfoEl.classList.remove('open');
+      gsap.to(camera.position, {
+        y: 0,
+        duration: 1.5,
+        ease: 'power3.inOut',
+        onUpdate: () => {
+          if (scene.fog) {
+            const dist = camera.position.length();
+            const extraDist = (1 - introState.fogFade) * 5;
+            scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
+            scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
+          }
+          if (reflector) {
+            const wasVisible = reflector.visible;
+            const isNowVisible = camera.position.y > -1.45;
+            reflector.visible = isNowVisible;
+
+            // Assim que a câmera passar pra cima do chão, inicia o fade in do reflexo
+            if (!wasVisible && isNowVisible) {
+              gsap.killTweensOf(reflector.material.uniforms.globalOpacity);
+              reflector.material.uniforms.globalOpacity.value = 0;
+              gsap.to(reflector.material.uniforms.globalOpacity, { value: 1, duration: 0.6, ease: 'power2.out' });
+            }
+          }
+        }
+      });
+      gsap.delayedCall(1.0, () => {
+        if (!isAboutOpen) {
+          aboutFoldEl.style.opacity = '0';
+          aboutFoldEl.style.pointerEvents = 'none';
+        }
+      });
+      
+      const tickerH = document.querySelector('.ticker-h');
+      const tickerV = document.querySelector('.ticker-v');
+      
+      if (tickerH && tickerV) {
+        animateTickersTransition(tickerV, tickerH, false);
+      }
+      
+      animateIntroSlot(false);
+
+      gsap.to(aboutContentEl, {
+        y: 50,
+        duration: 0.8,
+        ease: 'power3.in'
+      });
     }
   });
 }
@@ -595,126 +1003,15 @@ window.addEventListener('exitProjectGallery', () => {
 });
 window.addEventListener('enterGalleryScene', () => {
   setGlobalActionText('Voltar', 'exitGallery');
-  const headerEl = document.getElementById('top-header-container') || document.getElementById('top-logo');
-  if (headerEl) gsap.to(headerEl, { opacity: 0, duration: 0.8 });
+  const logoEl = document.getElementById('top-logo');
+  if (logoEl) gsap.to(logoEl, { opacity: 0, duration: 0.8 });
 });
 window.addEventListener('exitGalleryScene', () => {
   // Garante que o botão mostre "Abrir" porque as telas vão fechar automaticamente
   setGlobalActionText('Abrir', 'toggleFold');
 
-  const headerEl = document.getElementById('top-header-container') || document.getElementById('top-logo');
-  if (headerEl) gsap.to(headerEl, { opacity: 1, duration: 0.8, delay: 0.5 });
-});
-
-// --- Bio Fold Interactions with SVG ClipPath Strips ---
-const subtitleBtn = document.getElementById('top-subtitle-btn');
-const bioOverlay = document.getElementById('bio-fold-overlay');
-const bioCard = document.querySelector('.bio-fold-card');
-const bioStrips = document.querySelectorAll('.svg-strip');
-
-let isBioFoldAnimating = false;
-
-function openBioFold() {
-  if (!bioOverlay || isBioFoldAnimating) return;
-  isBioFoldAnimating = true;
-
-  bioOverlay.classList.add('active');
-  startBioParticles(); // Começa a renderizar atmosfera 3D e post-processing
-  
-  setGlobalActionText('Fechar', 'closeBioFold');
-
-  // Reset positions
-  gsap.set(bioStrips, { attr: { y: 1 } });
-  gsap.set(bioCard, { opacity: 0, translateY: '20px' });
-
-  // Animate 7 vertical strips from center (index 3) outwards
-  bioStrips.forEach((strip, i) => {
-    const distFromCenter = Math.abs(i - 3);
-    gsap.to(strip, {
-      attr: { y: 0 },
-      duration: 0.65,
-      ease: 'power3.out',
-      delay: distFromCenter * 0.07
-    });
-  });
-
-  // Reveal the text content card
-  gsap.to(bioCard, {
-    opacity: 1,
-    translateY: '0px',
-    duration: 0.6,
-    ease: 'power2.out',
-    delay: 0.32,
-    onComplete: () => {
-      isBioFoldAnimating = false;
-    }
-  });
-}
-
-function closeBioFold() {
-  if (!bioOverlay || !bioOverlay.classList.contains('active') || isBioFoldAnimating) return;
-  isBioFoldAnimating = true;
-
-  setGlobalActionText(isFolded ? 'Fechar' : 'Abrir', 'toggleFold');
-
-  // Fade out card content first
-  gsap.to(bioCard, {
-    opacity: 0,
-    translateY: '-20px',
-    duration: 0.25,
-    ease: 'power2.in'
-  });
-
-  // Animate strips up (y: -1) starting from center
-  let maxDelay = 0;
-  bioStrips.forEach((strip, i) => {
-    const distFromCenter = Math.abs(i - 3);
-    const delay = distFromCenter * 0.06;
-    if (delay > maxDelay) maxDelay = delay;
-
-    gsap.to(strip, {
-      attr: { y: -1 },
-      duration: 0.55,
-      ease: 'power3.in',
-      delay: 0.1 + delay
-    });
-  });
-
-  // After all strips exit, remove active class and reset positions
-  gsap.delayedCall(0.1 + maxDelay + 0.55, () => {
-    bioOverlay.classList.remove('active');
-    stopBioParticles();
-    gsap.set(bioStrips, { attr: { y: 1 } });
-    gsap.set(bioCard, { opacity: 0, translateY: '20px' });
-    isBioFoldAnimating = false;
-  });
-}
-
-if (subtitleBtn) {
-  subtitleBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openBioFold();
-  });
-}
-
-if (bioOverlay) {
-  bioOverlay.addEventListener('click', (e) => {
-    if (e.target === bioOverlay || e.target.classList.contains('bio-strips-wrapper')) {
-      closeBioFold();
-    }
-  });
-}
-
-if (bioCard) {
-  bioCard.addEventListener('pointerdown', (e) => e.stopPropagation());
-  bioCard.addEventListener('pointerup', (e) => e.stopPropagation());
-  bioCard.addEventListener('click', (e) => e.stopPropagation());
-}
-
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && bioOverlay && bioOverlay.classList.contains('active')) {
-    closeBioFold();
-  }
+  const logoEl = document.getElementById('top-logo');
+  if (logoEl) gsap.to(logoEl, { opacity: 1, duration: 0.8, delay: 0.5 });
 });
 
 // --- GUI Setup ---

@@ -153,7 +153,7 @@ export const bgGridMat = new THREE.ShaderMaterial({
       float lineY = step(1.0 - thickness, grid.y);
       float line = max(lineX, lineY);
       
-      gl_FragColor = vec4(vec3(1.0), line * 0.015);
+      gl_FragColor = vec4(vec3(1.0), line * 0.04);
     }
   `,
   transparent: true,
@@ -163,56 +163,6 @@ const bgGrid = new THREE.Mesh(bgGridGeo, bgGridMat);
 bgGrid.position.z = -50;
 galleryScene.add(bgGrid);
 
-function createBrandTextTexture() {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  const text = 'BRAND';
-  const fontSize = 100;
-  
-  ctx.font = `600 ${fontSize}px 'CooperLtBT', serif`;
-  const textWidth = ctx.measureText(text).width;
-  canvas.width = textWidth + 20;
-  canvas.height = fontSize + 20;
-  
-  ctx.font = `600 ${fontSize}px 'CooperLtBT', serif`;
-  ctx.fillStyle = '#1c1c1c';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-  
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  return texture;
-}
-
-export const brandParticlesGroup = new THREE.Group();
-galleryScene.add(brandParticlesGroup);
-
-let brandParticlesInitialized = false;
-
-export function initBrandParticles() {
-  if (brandParticlesInitialized) return;
-  
-  const brandTex = createBrandTextTexture();
-  const brandMat = new THREE.SpriteMaterial({ map: brandTex, transparent: true, opacity: 0.8, depthWrite: false });
-
-  for (let i = 0; i < 90; i++) {
-    const sprite = new THREE.Sprite(brandMat);
-    sprite.position.x = (Math.random() - 0.5) * 8000;
-    sprite.position.y = (Math.random() - 0.5) * 8000;
-    sprite.position.z = -300 - Math.random() * 700;
-    
-    const scale = 30 + Math.random() * 80;
-    sprite.scale.set(scale * (brandTex.image.width / brandTex.image.height), scale, 1);
-    
-    brandParticlesGroup.add(sprite);
-  }
-  
-  brandParticlesInitialized = true;
-}
-
-
 
 
 const cols = 5;
@@ -220,7 +170,7 @@ const rows = 5;
 const isMobile = window.innerWidth < 768;
 const itemWidth = isMobile ? window.innerWidth * 0.6 : 300;
 const itemHeight = isMobile ? window.innerWidth * 0.6 : 300;
-const spacing = itemWidth + (isMobile ? 50 : 100);
+const spacing = itemWidth + (isMobile ? 50 : 100); 
 
 export const gridGroup = new THREE.Group();
 galleryScene.add(gridGroup);
@@ -233,20 +183,20 @@ function createPlaceholderTexture() {
   canvas.width = 1024;
   canvas.height = 1024;
   const ctx = canvas.getContext('2d');
-
+  
   ctx.fillStyle = '#1c1c1c';
   ctx.fillRect(0, 0, 1024, 1024);
-
+  
   ctx.strokeStyle = '#333333';
   ctx.lineWidth = 4;
   ctx.strokeRect(20, 20, 984, 984);
-
+  
   ctx.fillStyle = '#555555';
   ctx.font = '80px "CooperLtBT", serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('EM BREVE', 512, 512);
-
+  
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -258,36 +208,36 @@ let gridIndex = 0;
 
 for (let r = 0; r < rows; r++) {
   for (let c = 0; c < cols; c++) {
-
+    
     // Mostra os projetos reais. O resto vira EM BREVE.
     if (gridIndex < projectsData.length) {
       const projIndex = gridIndex % projectsData.length;
       const pData = projectsData[projIndex];
-
+      
       const tex = textureLoader.load(pData.cover, applyCoverAspect);
       tex.colorSpace = THREE.SRGBColorSpace;
-
-      const mat = new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: true,
-        color: new THREE.Color(0xffffff)
+      
+      const mat = new THREE.MeshBasicMaterial({ 
+        map: tex, 
+        transparent: true, 
+        color: new THREE.Color(0xffffff) 
       });
       const mesh = new THREE.Mesh(planeGeo, mat);
       mesh.userData = { c, r, isGrid: true, projectIndex: projIndex, isPlaceholder: false };
       gridGroup.add(mesh);
       gridMeshes.push(mesh);
     } else {
-      const mat = new THREE.MeshBasicMaterial({
-        map: placeholderTex,
-        transparent: true,
-        color: new THREE.Color(0xffffff)
+      const mat = new THREE.MeshBasicMaterial({ 
+        map: placeholderTex, 
+        transparent: true, 
+        color: new THREE.Color(0xffffff) 
       });
       const mesh = new THREE.Mesh(planeGeo, mat);
       mesh.userData = { c, r, isGrid: true, isPlaceholder: true };
       gridGroup.add(mesh);
       gridMeshes.push(mesh);
     }
-
+    
     gridIndex++;
   }
 }
@@ -304,23 +254,23 @@ function updateGridPositions() {
   const modY = rows * spacing;
   const halfX = modX / 2;
   const halfY = modY / 2;
-
+  
   gridMeshes.forEach(mesh => {
     const c = mesh.userData.c;
     const r = mesh.userData.r;
-
+    
     let x = (c * spacing + offsetX);
     let y = (r * spacing + offsetY);
-
+    
     x = ((x + halfX) % modX + modX) % modX - halfX;
     y = ((y + halfY) % modY + modY) % modY - halfY;
-
+    
     mesh.userData.currentX = x;
     mesh.userData.currentY = -y; // Three.js Y is up, but our offset is screen-based
-
+    
     mesh.position.set(mesh.userData.currentX, mesh.userData.currentY, 0);
   });
-
+  
   bgGridMat.uniforms.uOffset.value.set(
     -offsetX * 0.2 / 200.0,
     (offsetY - projectScrollY) * 0.2 / 200.0
@@ -343,15 +293,15 @@ let detailMeshes = [];
 // The global action button handles closing the gallery or project
 window.addEventListener('exitProjectGallery', () => {
   if (!isProjectOpen) return;
-
+  
   // Reset color of clicked mesh instantly
   if (window.clickedMesh) {
     window.clickedMesh.material.color.setRGB(1, 1, 1);
   }
-
+  
   // Fade out detail meshes
   detailMeshes.forEach(m => gsap.to(m.material, { opacity: 0, duration: 0.8 }));
-
+  
   // Fade in grid meshes
   gridMeshes.forEach(m => {
     if (m !== window.clickedMesh) {
@@ -360,7 +310,7 @@ window.addEventListener('exitProjectGallery', () => {
   });
 
   const animObj = { scrollY: projectScrollY, zoom: galleryCamera.zoom };
-
+  
   gsap.to(animObj, {
     scrollY: 0,
     zoom: 1,
@@ -369,16 +319,16 @@ window.addEventListener('exitProjectGallery', () => {
     onUpdate: () => {
       // Update detail group position
       detailGroup.position.y = animObj.scrollY;
-
+      
       // Update clicked mesh position to stay with detail group
       if (window.clickedMesh) {
         window.clickedMesh.position.y = window.clickedMesh.userData.currentY + animObj.scrollY;
       }
-
+      
       // Update camera zoom
       galleryCamera.zoom = animObj.zoom;
       galleryCamera.updateProjectionMatrix();
-
+      
       // Update parallax grid during close
       bgGridMat.uniforms.uOffset.value.set(
         -offsetX * 0.2 / 200.0,
@@ -395,7 +345,7 @@ window.addEventListener('exitProjectGallery', () => {
       detailMeshes = [];
       projectScrollY = 0;
       isProjectOpen = false;
-
+      
       // Tell main to update the global button back to gallery close
       window.dispatchEvent(new CustomEvent('exitProjectGalleryCompleted'));
     }
@@ -412,11 +362,11 @@ window.addEventListener('pointerdown', (e) => {
 
 window.addEventListener('pointermove', (e) => {
   if (window.activeScene !== 'gallery') return;
-
+  
   // Handle hover effect
   mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
+  
   if (!isPointerDown && !isProjectOpen) {
     raycaster.setFromCamera(mouse, galleryCamera);
     const intersects = raycaster.intersectObjects(gridMeshes);
@@ -426,12 +376,12 @@ window.addEventListener('pointermove', (e) => {
   }
 
   if (!isPointerDown) return;
-
+  
   const dx = e.clientX - pointerStartX;
   const dy = e.clientY - pointerStartY;
-
+  
   if (Math.hypot(dx, dy) > 3) isDraggingGallery = true;
-
+  
   if (!isProjectOpen) {
     offsetX += dx;
     offsetY += dy; // Screen Y is inverted to 3D Y, but updateGridPositions handles it
@@ -451,14 +401,14 @@ window.addEventListener('pointermove', (e) => {
       (offsetY - projectScrollY) * 0.2 / 200.0
     );
   }
-
+  
   pointerStartX = e.clientX;
   pointerStartY = e.clientY;
 });
 
 window.addEventListener('wheel', (e) => {
   if (window.activeScene !== 'gallery') return;
-
+  
   if (!isProjectOpen) {
     offsetX -= e.deltaX;
     offsetY -= e.deltaY;
@@ -482,12 +432,12 @@ window.addEventListener('wheel', (e) => {
 window.addEventListener('pointerup', (e) => {
   if (window.activeScene !== 'gallery') return;
   isPointerDown = false;
-
+  
   // Update mouse coordinates on pointerup so that simple taps on mobile
   // calculate the correct intersection, instead of using old coordinates.
   mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
+  
   if (!isDraggingGallery && !isProjectOpen) {
     raycaster.setFromCamera(mouse, galleryCamera);
     const intersects = raycaster.intersectObjects(gridMeshes);
@@ -498,14 +448,14 @@ window.addEventListener('pointerup', (e) => {
       }
     }
   }
-
+  
   setTimeout(() => isDraggingGallery = false, 0);
 });
 
 function openProject(clickedMesh) {
   isProjectOpen = true;
   window.clickedMesh = clickedMesh;
-
+  
   // Tell main to update the global button to close project mode
   window.dispatchEvent(new CustomEvent('openProjectDetail'));
 
@@ -521,13 +471,13 @@ function openProject(clickedMesh) {
   // Pan grid to center clicked mesh and zoom in
   const targetX = clickedMesh.userData.currentX;
   const targetY = -clickedMesh.userData.currentY; // back to screen space offset
-
+  
   // Calcular o zoom para a imagem ocupar: 90% no mobile, 60% no desktop
   const pct = isMobile ? 0.9 : 0.8;
   const targetZoomX = (window.innerWidth * pct) / itemWidth;
   const targetZoomY = (window.innerHeight * pct) / itemHeight;
   const targetZoom = Math.min(targetZoomX, targetZoomY);
-
+  
   const panObj = { ox: offsetX, oy: offsetY, zoom: 1 };
   gsap.to(panObj, {
     ox: offsetX - targetX,
@@ -546,12 +496,12 @@ function openProject(clickedMesh) {
       // Spawn detail meshes below
       projectScrollY = 0;
       detailGroup.position.y = 0;
-
+      
       let yOffset = -spacing; // espaçamento entre os itens
-
+      
       const imagesToLoad = projectsData[clickedMesh.userData.projectIndex].images;
       currentProjectImagesLength = imagesToLoad.length;
-
+      
       imagesToLoad.forEach((src, idx) => {
         const tex = textureLoader.load(src, applyCoverAspect);
         tex.colorSpace = THREE.SRGBColorSpace;
@@ -561,7 +511,7 @@ function openProject(clickedMesh) {
         mesh.position.set(0, yOffset, 0);
         detailGroup.add(mesh);
         detailMeshes.push(mesh);
-
+        
         gsap.to(mat, { opacity: 1, duration: 1, delay: idx * 0.1 });
         yOffset -= spacing;
       });
