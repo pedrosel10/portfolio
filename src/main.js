@@ -782,12 +782,9 @@ function animateIntroSlot(isEntering) {
         if (obj.letter === ' ') return; // Don't respin spaces
         const { strip, numItems } = obj;
         const children = strip.children;
-        const charsPool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.split('');
-        
         // Match index 0 to the target letter so snapping to 0% is completely invisible
-        children[0].innerText = obj.letter;
-        for (let j = 1; j < children.length - 1; j++) {
-          children[j].innerText = charsPool[Math.floor(Math.random() * charsPool.length)];
+        if (children[0].innerText !== obj.letter) {
+          children[0].innerText = obj.letter;
         }
         
         gsap.set(strip, { y: '0%' });
@@ -1393,10 +1390,6 @@ if (logoEl) {
   setInterval(() => {
     strips.forEach((strip, i) => {
       const children = strip.children;
-      for (let j = 1; j < children.length - 1; j++) {
-        children[j].innerText = chars[Math.floor(Math.random() * chars.length)];
-      }
-
       gsap.set(strip, { y: 0 });
 
       const targetY = - (children.length - 1) * 18;
