@@ -523,7 +523,10 @@ if (globalBtn) {
       const wasFolded = isFolded;
       toggleFold();
       // wasFolded=true → opening → show 'Fechar'; wasFolded=false → closing → show 'Abrir'
-      setGlobalActionText(wasFolded ? 'Fechar' : 'Abrir');
+      const label = document.getElementById('toggle-fold-text');
+      if (label) label.innerText = wasFolded ? 'FECHAR' : 'ABRIR';
+    } else if (currentActionType === 'closeAbout') {
+      closeAboutFold();
     } else if (currentActionType === 'exitGallery') {
       window.dispatchEvent(new CustomEvent('exitGalleryScene'));
     } else if (currentActionType === 'exitProject') {
@@ -820,98 +823,140 @@ let isAboutOpen = false;
 const authorInfoEl = document.getElementById('author-info');
 const aboutFoldEl = document.getElementById('about-fold');
 const aboutContentEl = document.querySelector('.about-center-box');
+const topLogoEl = document.getElementById('top-logo');
+
+function morphIconToDoor() {
+  gsap.set('#icon-path-1', { attr: { 'stroke-linejoin': 'miter', 'stroke-linecap': 'square' } });
+  gsap.to('#icon-path-2, #icon-path-3', { opacity: 0, duration: 0.3 });
+  gsap.to('#icon-path-1', { 
+    attr: { d: 'M 40 130 C 40 130, 40 40, 40 40 C 40 40, 130 40, 130 40 C 130 40, 130 130, 130 130' }, 
+    duration: 0.5, 
+    ease: 'power3.inOut' 
+  });
+  currentActionType = 'closeAbout';
+}
+
+function morphIconToEye() {
+  gsap.to('#icon-path-2, #icon-path-3', { opacity: 1, duration: 0.3, delay: 0.2 });
+  gsap.to('#icon-path-1', { 
+    attr: { d: 'M 22.37 103.70 C 22.37 103.70, 41.59 75.77, 41.59 75.77 C 41.59 75.77, 60.82 47.83, 60.82 47.83 C 60.82 47.83, 80.04 19.90, 80.04 19.90' }, 
+    duration: 0.5, 
+    ease: 'power3.inOut',
+    onComplete: () => {
+      gsap.set('#icon-path-1', { attr: { 'stroke-linejoin': 'round', 'stroke-linecap': 'butt' } });
+    }
+  });
+  currentActionType = 'toggleFold';
+}
+
+function closeAboutFold() {
+  if (!isAboutOpen) return;
+  isAboutOpen = false;
+  
+  morphIconToEye();
+  
+  if (authorInfoEl) authorInfoEl.classList.remove('open');
+  
+  // Slide texts back down
+  gsap.to([topLogoEl, authorInfoEl], { y: 0, xPercent: -50, x: 0, opacity: 1, duration: 1.2, ease: 'power3.inOut' });
+
+  gsap.to(camera.position, {
+    y: 0,
+    duration: 1.5,
+    ease: 'power3.inOut',
+    onUpdate: () => {
+      if (scene.fog) {
+        const dist = camera.position.length();
+        const extraDist = (1 - introState.fogFade) * 5;
+        scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
+        scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
+      }
+      if (reflector) {
+        const wasVisible = reflector.visible;
+        const isNowVisible = camera.position.y > -1.45;
+        reflector.visible = isNowVisible;
+
+        // Assim que a câmera passar pra cima do chão, inicia o fade in do reflexo
+        if (!wasVisible && isNowVisible) {
+          gsap.killTweensOf(reflector.material.uniforms.globalOpacity);
+          reflector.material.uniforms.globalOpacity.value = 0;
+          gsap.to(reflector.material.uniforms.globalOpacity, { value: 1, duration: 0.6, ease: 'power2.out' });
+        }
+      }
+    }
+  });
+  
+  gsap.delayedCall(1.0, () => {
+    if (!isAboutOpen && aboutFoldEl) {
+      aboutFoldEl.style.opacity = '0';
+      aboutFoldEl.style.pointerEvents = 'none';
+    }
+  });
+  
+  const tickerH = document.querySelector('.ticker-h');
+  const tickerV = document.querySelector('.ticker-v');
+  if (tickerH && tickerV) {
+    animateTickersTransition(tickerV, tickerH, false);
+  }
+  
+  animateIntroSlot(false);
+
+  if (aboutContentEl) {
+    gsap.to(aboutContentEl, {
+      y: 50,
+      duration: 0.8,
+      ease: 'power3.in'
+    });
+  }
+}
 
 if (authorInfoEl && aboutFoldEl) {
   authorInfoEl.addEventListener('click', (e) => {
     e.stopPropagation();
-    isAboutOpen = !isAboutOpen;
-
-    if (isAboutOpen) {
-      authorInfoEl.classList.add('open');
-      if (reflector) {
-        gsap.to(reflector.material.uniforms.globalOpacity, { value: 0, duration: 0.4 });
-      }
-      gsap.to(camera.position, {
-        y: -12, // Move camera down (scene moves up)
-        duration: 1.5,
-        ease: 'power3.inOut',
-        onUpdate: () => {
-          if (scene.fog) {
-            const dist = camera.position.length();
-            const extraDist = (1 - introState.fogFade) * 5;
-            scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
-            scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
-          }
-          if (reflector) {
-            reflector.visible = camera.position.y > -1.45;
-          }
+    if (isAboutOpen) return; // Only opens now
+    
+    isAboutOpen = true;
+    morphIconToDoor();
+    
+    // Slide texts up and out
+    gsap.to([topLogoEl, authorInfoEl], { y: -100, xPercent: -50, x: 0, opacity: 0, duration: 1.2, ease: 'power3.inOut' });
+    
+    authorInfoEl.classList.add('open');
+    if (reflector) {
+      gsap.to(reflector.material.uniforms.globalOpacity, { value: 0, duration: 0.4 });
+    }
+    gsap.to(camera.position, {
+      y: -12, // Move camera down (scene moves up)
+      duration: 1.5,
+      ease: 'power3.inOut',
+      onUpdate: () => {
+        if (scene.fog) {
+          const dist = camera.position.length();
+          const extraDist = (1 - introState.fogFade) * 5;
+          scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
+          scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
         }
-      });
-      aboutFoldEl.style.opacity = '1';
-      aboutFoldEl.style.pointerEvents = 'auto';
-      gsap.to(aboutContentEl, {
-        y: 0,
-        duration: 1.0,
-        delay: 0.5,
-        ease: 'power3.out'
-      });
-      
-      animateIntroSlot(true);
-
-      const tickerH = document.querySelector('.ticker-h');
-      const tickerV = document.querySelector('.ticker-v');
-      
-      if (tickerH && tickerV) {
-        animateTickersTransition(tickerV, tickerH, true);
-      }
-    } else {
-      authorInfoEl.classList.remove('open');
-      gsap.to(camera.position, {
-        y: 0,
-        duration: 1.5,
-        ease: 'power3.inOut',
-        onUpdate: () => {
-          if (scene.fog) {
-            const dist = camera.position.length();
-            const extraDist = (1 - introState.fogFade) * 5;
-            scene.fog.near = dist + (fogSettings.baseNear - cameraSettings.baseZ) + extraDist;
-            scene.fog.far = dist + (fogSettings.baseFar - cameraSettings.baseZ) + extraDist;
-          }
-          if (reflector) {
-            const wasVisible = reflector.visible;
-            const isNowVisible = camera.position.y > -1.45;
-            reflector.visible = isNowVisible;
-
-            // Assim que a câmera passar pra cima do chão, inicia o fade in do reflexo
-            if (!wasVisible && isNowVisible) {
-              gsap.killTweensOf(reflector.material.uniforms.globalOpacity);
-              reflector.material.uniforms.globalOpacity.value = 0;
-              gsap.to(reflector.material.uniforms.globalOpacity, { value: 1, duration: 0.6, ease: 'power2.out' });
-            }
-          }
+        if (reflector) {
+          reflector.visible = camera.position.y > -1.45;
         }
-      });
-      gsap.delayedCall(1.0, () => {
-        if (!isAboutOpen) {
-          aboutFoldEl.style.opacity = '0';
-          aboutFoldEl.style.pointerEvents = 'none';
-        }
-      });
-      
-      const tickerH = document.querySelector('.ticker-h');
-      const tickerV = document.querySelector('.ticker-v');
-      
-      if (tickerH && tickerV) {
-        animateTickersTransition(tickerV, tickerH, false);
       }
-      
-      animateIntroSlot(false);
+    });
+    aboutFoldEl.style.opacity = '1';
+    aboutFoldEl.style.pointerEvents = 'auto';
+    gsap.to(aboutContentEl, {
+      y: 0,
+      duration: 1.0,
+      delay: 0.5,
+      ease: 'power3.out'
+    });
+    
+    animateIntroSlot(true);
 
-      gsap.to(aboutContentEl, {
-        y: 50,
-        duration: 0.8,
-        ease: 'power3.in'
-      });
+    const tickerH = document.querySelector('.ticker-h');
+    const tickerV = document.querySelector('.ticker-v');
+    
+    if (tickerH && tickerV) {
+      animateTickersTransition(tickerV, tickerH, true);
     }
   });
 }
@@ -1001,14 +1046,16 @@ window.addEventListener('exitProjectGallery', () => {
 window.addEventListener('enterGalleryScene', () => {
   setGlobalActionText('Voltar', 'exitGallery');
   const logoEl = document.getElementById('top-logo');
-  if (logoEl) gsap.to(logoEl, { opacity: 0, duration: 0.8 });
+  const authorInfoEl = document.getElementById('author-info');
+  gsap.to([logoEl, authorInfoEl], { y: -100, xPercent: -50, x: 0, opacity: 0, duration: 0.8, ease: 'power3.inOut' });
 });
 window.addEventListener('exitGalleryScene', () => {
   // Garante que o botão mostre "Abrir" porque as telas vão fechar automaticamente
   setGlobalActionText('Abrir', 'toggleFold');
 
   const logoEl = document.getElementById('top-logo');
-  if (logoEl) gsap.to(logoEl, { opacity: 1, duration: 0.8, delay: 0.5 });
+  const authorInfoEl = document.getElementById('author-info');
+  gsap.to([logoEl, authorInfoEl], { y: 0, xPercent: -50, x: 0, opacity: 1, duration: 0.8, delay: 0.5, ease: 'power3.inOut' });
 });
 
 // --- GUI Setup ---
